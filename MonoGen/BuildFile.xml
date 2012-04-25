@@ -1,0 +1,15 @@
+<use name="FWCore/Framework"/>
+<use name="FWCore/PluginManager"/>
+<use name="FWCore/ParameterSet"/>
+<use   name="DataFormats/Candidate"/>
+<use   name="SimDataFormats/GeneratorProducts"/>
+<use   name="DataFormats/HepMCCandidate"/>
+<use   name="GeneratorInterface/Pythia6Interface"/>
+<use   name="f77compiler"/>
+<use   name="PhysicsTools/UtilAlgos"/>
+<use name="DataFormats/Math"/>
+<use name="SimGeneral/HepPDTRecord"/>
+<flags EDM_PLUGIN="1"/>
+<export>
+   <lib name="1"/>
+</export>
