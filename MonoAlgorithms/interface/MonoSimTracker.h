@@ -62,6 +62,18 @@ static const char * collNames[] = { ""  	// simTracks
 
 
 
+struct SumStruct {
+  double sum;
+  unsigned N;
+  SumStruct(): sum(0.),N(0) {}
+  inline void operator+=(double add) {
+    N++;
+    sum += add;
+  }
+
+};
+
+
 
 template <class T,class S>
 class MonoSimTracker {
@@ -81,6 +93,10 @@ class MonoSimTracker {
   const double y(const MonoEnum m,const unsigned i) const;
   const double z(const MonoEnum m,const unsigned i) const;
 
+  // geometry by detId
+  const double eta(const unsigned i) const;
+  const double phi(const unsigned i) const;
+
 
   // hit access (could be skipped and access the hit directory through hit()
   const double energy(const MonoEnum m,const unsigned i) const;
@@ -88,6 +104,8 @@ class MonoSimTracker {
 
   const T * hit(const MonoEnum m,const unsigned i) const;
   inline const S* geo() const { return m_geo; }
+
+  inline const std::map<unsigned,SumStruct> & idSumMap(const MonoEnum m) const { return m_idMapSum[m]; }
  
 
 
@@ -109,6 +127,9 @@ class MonoSimTracker {
   
   // vector of hits
   std::vector<T> m_hits[2];
+
+  // detector id map to summed energy
+  std::map<unsigned,SumStruct> m_idMapSum[2];
 
 
 };  // end MonoSimTracker class declaration
