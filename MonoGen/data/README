@@ -1,0 +1,20 @@
+#####################################################################
+	CMS MonoGen UserCode README file
+#####################################################################
+
+The data directory:
+---------------------------------------------------------------------
+The Geant4 CMSSW monopole simulation (and so some extent MC generation)
+require the source code file in this directory (Monopoles/MonoGen/data)
+to be copied into the appropriate places in the CMSSW working area.
+
+Files:
+......................................................................
+- pythiaparticle.tbl
+| \ copy this file to SimGeneral/HepPDTESSource/data
+| | \ This file defines the PID entries for each monopole mass point
+- CMSMonopolePhysics.h and CMSMonopolePhysics.cc
+| \ copy these files in the interface and src directories respectively of 
+| | the SimG4Core/PhysicsLists package
+| | \ These files alert CMSSW of the presence of monopoles in the simulation
+

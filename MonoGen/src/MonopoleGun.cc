@@ -155,10 +155,7 @@ void MonopoleGun::generateEvent()
   E = sqrt( m_mass*m_mass+m_dir.mag2() );
 
 
-
-
-
-  HepMC::FourVector p(px*px,py*py,pz*pz,E*E);
+  HepMC::FourVector p(px,py,pz,E);
   HepMC::GenParticle *part = new HepMC::GenParticle(p,m_pid,1);
   part->suggest_barcode( 1 );
 

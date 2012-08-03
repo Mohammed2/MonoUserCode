@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Mon Jan 30 13:13:11 CST 2012
-// $Id$
+// $Id: MonoGen.cc,v 1.1 2012/06/14 16:53:02 cowden Exp $
 //
 //
 
@@ -184,7 +184,7 @@ MonoGen::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         const HepMC::GenParticle* particle = *p;
         const reco::Candidate::LorentzVector p4( particle->momentum());
 
-        if ( abs(particle->pdg_id()) != 4110000 ) continue;
+        if ( abs(particle->pdg_id()) < 4110000 ) continue;
 
      /*   printf("%4u %4d  %4u  %10.5f   %10.5f   %10.5f   %10.5f   %10.5f %10.5f\n",
                counter, particle->pdg_id(),  particle->status(), p4.Px(), p4.Py(), p4.Pz(), p4.E(),
