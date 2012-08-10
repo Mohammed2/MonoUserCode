@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoSimAnalysis.cc,v 1.1 2012/04/25 17:55:19 cowden Exp $
+// $Id: MonoSimAnalysis.cc,v 1.2 2012/06/14 17:08:14 cowden Exp $
 //
 //
 
@@ -477,7 +477,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   }
  
   if ( amon ) { 
-    m_amon_p = cow::mag( amon->momentum().px(), mono->momentum().py(), mono->momentum().pz() );
+    m_amon_p = cow::mag( amon->momentum().px(), amon->momentum().py(), amon->momentum().pz() );
     m_amon_eta = amon->momentum().eta();
     m_amon_phi = amon->momentum().phi();
     m_amon_m = amon->momentum().m(); 
