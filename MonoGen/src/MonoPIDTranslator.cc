@@ -18,7 +18,7 @@ the run.
 //
 // Original Author:  Christopher Cowden
 //         Created:  Wed Aug  1 14:25:42 CST 2012
-// $Id: MonoPIDTranslator.cc,v 1.1 2012/08/02 18:56:27 cowden Exp $
+// $Id: MonoPIDTranslator.cc,v 1.1 2012/08/10 15:31:41 cowden Exp $
 //
 //
 
@@ -40,9 +40,6 @@ the run.
 
 //data formats
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
-
-// HEP particle data table
-#include "SimGeneral/HepPDTRecord/interface/ParticleDataTable.h"
 
 //
 // class declaration
@@ -69,9 +66,9 @@ class MonoPIDTranslator : public edm::EDAnalyzer {
       // ----------member data ---------------------------
   const edm::InputTag m_mc_label;
 
-  double m_genMass; // mass of the generated particle (given by config file)
+  //double m_genMass; // mass of the generated particle (given by config file)
 
-  int m_PID;  // pid of monopole for given mass (m_genMass)
+  int m_PID;  
 
 };
 
@@ -88,8 +85,7 @@ class MonoPIDTranslator : public edm::EDAnalyzer {
 //
 MonoPIDTranslator::MonoPIDTranslator(const edm::ParameterSet& iConfig)
   :m_mc_label(iConfig.getParameter<edm::InputTag>("MC_Label"))
-  ,m_genMass(iConfig.getParameter<double>("Mass"))
-  ,m_PID(0)
+  ,m_PID(4110000)
 {
    //now do what ever initialization is needed
 
@@ -115,28 +111,6 @@ void
 MonoPIDTranslator::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
    using namespace edm;
-
-  m_PID = 4110000;
-  if ( m_PID == 0 ) {
-    ESHandle<ParticleDataTable> pdt;
-    iSetup.getData( pdt );
-  
-    HepPDT::ParticleDataTable::const_iterator p=pdt->begin();
-    for ( ; p != pdt->end(); ++p ) {
-  
-      HepPDT::ParticleData particle = (p->second);
-      std::string particleName = (particle.name()).substr(0,8);
-      if ( particleName.find("Monopole") != std::string::npos && particle.mass() == m_genMass )
-        m_PID = abs(particle.pid());
-  
-    }
-  
-    if ( m_PID == 0 ) {
-      throw cms::Exception("Undefined monopole mass") << "The monopole mass " << m_genMass << " is not defined in the particle data table!!";
-    }
-  }
-
-
 
 
   edm::Handle<edm::HepMCProduct> mcproduct;
