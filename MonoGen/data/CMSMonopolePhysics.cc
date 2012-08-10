@@ -30,6 +30,9 @@ CMSMonopolePhysics::CMSMonopolePhysics(const HepPDT::ParticleDataTable * pdt,
   deltaRay  = p.getUntrackedParameter<bool>("MonopoleDeltaRay",true);
   multiSc   = p.getUntrackedParameter<bool>("MonopoleMultiScatter",false);
   transport = p.getUntrackedParameter<bool>("MonopoleTransport",true);
+  mass	    = p.getUntrackedParameter<double>("MonopoleMass",200);
+
+  std::cout << "CMSMonopole mass: " << mass << std::endl;
 
   verbose = 3;
   if (pdt) {
@@ -42,7 +45,8 @@ CMSMonopolePhysics::CMSMonopolePhysics(const HepPDT::ParticleDataTable * pdt,
       
       if (strcmp(particleName.c_str(),"Monopole") == 0) {
 	names.push_back(particle.name());
-	masses.push_back((particle.mass())*CLHEP::GeV);
+	//masses.push_back((particle.mass())*CLHEP::GeV);
+	masses.push_back(mass*CLHEP::GeV);
 	elCharges.push_back((int)(particle.charge()));
 	pdgEncodings.push_back(particle.pid());
 	monopoles.push_back(0);
@@ -55,7 +59,8 @@ CMSMonopolePhysics::CMSMonopolePhysics(const HepPDT::ParticleDataTable * pdt,
 
       else if(strcmp(particleName.c_str(),"AntiMono") == 0) {
 	names.push_back(particle.name());
-	masses.push_back((particle.mass())*CLHEP::GeV);
+	//masses.push_back((particle.mass())*CLHEP::GeV);
+	masses.push_back(mass*CLHEP::GeV);
 	elCharges.push_back((int)(particle.charge()));
 	pdgEncodings.push_back(particle.pid());
 	monopoles.push_back(0);

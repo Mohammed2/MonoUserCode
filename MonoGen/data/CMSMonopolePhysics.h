@@ -29,6 +29,7 @@ private:
   std::vector<double>      masses;
   std::vector<int>         elCharges, pdgEncodings;
   std::vector<G4Monopole*> monopoles;
+  double                   mass;
 };
 
 #endif
