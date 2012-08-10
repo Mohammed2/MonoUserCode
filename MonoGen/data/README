@@ -12,9 +12,14 @@ Files:
 ......................................................................
 - pythiaparticle.tbl
 | \ copy this file to SimGeneral/HepPDTESSource/data
-| | \ This file defines the PID entries for each monopole mass point
+| | \ This file defines the PID entries for monopoles
 - CMSMonopolePhysics.h and CMSMonopolePhysics.cc
 | \ copy these files in the interface and src directories respectively of 
 | | the SimG4Core/PhysicsLists package
 | | \ These files alert CMSSW of the presence of monopoles in the simulation
+- g4SimHist_cfi.py
+| \ copy this file to the python directory of SimG4Core/Application package
+| | \ This adds MonopoleMass to the paramter set passed to CMSMonopolePhysics
+| | | in order to simulate various monopole masses
+
 
