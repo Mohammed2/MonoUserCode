@@ -13,6 +13,23 @@
 #include "DataFormats/Common/interface/SortedCollection.h"
 #include "DataFormats/Math/interface/deltaPhi.h"
 
+#include "Monopoles/MonoAlgorithms/interface/MonoEcalCalibReader.h"
+
+#include "CLHEP/Matrix/Matrix.h"
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void dgetrf_(int *M,int *N, double *A, int *lda, int *IPIV, int *INFO);
+void dgetri_(int *N,double *A,int *lda,int *IPIV,double *WORK, int*lwork, int *INFO);
+
+#ifdef __cplusplus
+} // extern "C" ending
+#endif
+
+
 
 namespace Mono {
 
@@ -320,8 +337,11 @@ void ClusterBuilder::buildClusters(const unsigned nSeeds, const MonoEcalSeed *se
 
 // --------------------------- MonoEcalObs0 member functions ------------------------
 
-double MonoEcalObs0::calculate(const edm::EventSetup &es, const edm::Event &ev)
+double MonoEcalObs0::calculate(const edm::EventSetup &es, const edm::Event &ev, std::vector<double> *betas)
 {
+
+  assert( betas );
+
   m_ecalMap.constructGeo(es);
   m_seedFinder.constructGeo(es);
 
@@ -334,26 +354,60 @@ double MonoEcalObs0::calculate(const edm::EventSetup &es, const edm::Event &ev)
   // run the cluster builders
   m_clusterBuilder.buildClusters(m_seedFinder.nSeeds(),m_seedFinder.seeds(),m_ecalMap);
 
+  // cycle over found clusters in event
+  const unsigned nClusters = m_clusterBuilder.nClusters();
+  betas->resize( nClusters );
+  const MonoEcalCluster * clusters = m_clusterBuilder.clusters();
+  for ( unsigned c=0; c != nClusters; c++ ) {
+    const unsigned length = clusters[c].clusterLength();
+    const unsigned width = clusters[c].clusterWidth();
+    const ClustCategorizer cat(length,width);
+    const unsigned side = length*width;
+    const unsigned size = side*side;
+   
+    std::vector<double> & hMat = m_hMatMap[cat];
+    // assertion here on size, do better error checking and handling in the future
+    // what to do if encounter un-categorized cluster size
+    assert( hMat.size() );
+
+    if ( m_wsSize < side ) {
+      m_wsSize = side;
+      m_workspace.resize(m_wsSize);
+    }
+
+    // clear workspace
+    for ( unsigned i=0; i != m_wsSize; i++ ) m_workspace[i] = 0.;
+
+  
+    const double eTot = clusters[c].clusterEnergy();
+    // fill workspace
+    for ( unsigned i=0; i != width; i++ ) {
+      int ki = (int)i-(int)width/2;
+      for ( unsigned j=0; j != length; j++ ) {
+	unsigned num = i*length+j;
+	m_workspace[num] = clusters[c].energy(j,ki,m_ecalMap)/eTot-m_functor(j-(int)length/2,ki-(int)width/2);
+      }
+    }
+
+    // calculate beta for this cluster
+    double & beta = (*betas)[c];
+    beta = 0.;
+    for ( unsigned i=0; i != side; i++ ) {
+      const double eli = m_workspace[i];
+      for ( unsigned j=0; j != side; j++ ) {
+	const double term = eli*hMat[i*side+j]*m_workspace[j];
+	beta += term;
+      }
+    }
+
+    
+  }
+
+
   return 0.;
 }
 
-double MonoEcalObs0::eBarI(const unsigned i)
-{
-  return 0.;
-}
 
-double MonoEcalObs0::betaij(const unsigned i, const unsigned j)
-{
-  return 0;
-}
-
-double MonoEcalObs0::mij(const unsigned i,const unsigned j)
-{
-  return 0.;
-}
-
-void loadHMatTables()
-{ }
 
 // ------------------------- MonoEcalOb0Calibrator ---------------------------------
 
@@ -392,26 +446,27 @@ void MonoEcalObs0Calibrator::calculateMijn(const edm::EventSetup &es, const edm:
 
     std::vector<std::vector<double> > & vec = m_Mijn[cat];
 
-    // clear workspace
-    for ( unsigned j=0; j != m_wsSize; j++ ) m_workspace[j]=0.;
 
 
     const unsigned ieta = clusters[i].ieta();
     const unsigned iphi = clusters[i].iphi();
     const unsigned size = width*length;
     const double eTot = clusters[i].clusterEnergy();
-    assert( size <= m_wsSize );
+
+    if ( size <= m_wsSize ) {
+      m_wsSize = size;
+      m_workspace.resize(m_wsSize);
+    }
+
+    // clear workspace
+    for ( unsigned j=0; j != m_wsSize; j++ ) m_workspace[j]=0.;
+
     // fill workspace
     for ( unsigned k=0; k != width; k++ ) {
-      unsigned newPhi = 0U;  
-      unsigned newPhiDiff = 0U;
-      if ( k < width/2 )  newPhiDiff = width/2-k;
-      else newPhiDiff = k-width/2;
-      
+      int ki = (int)k-(int)width/2;
       for ( unsigned j=0; j != length; j++ ) {
-	const unsigned loc = (iphi+k-width/2)*nEta+ieta+j; 
-     	const unsigned num = k*length+j;
-	m_workspace[num] = m_ecalMap[loc]/eTot-m_functor(j-length/2,k-width/2);
+	unsigned num = k*length+j;
+	m_workspace[num] = clusters[i].energy(j,ki,m_ecalMap)/eTot-m_functor(j-(int)length/2,ki-(int)width/2);
       }
     }
   
@@ -431,13 +486,122 @@ void MonoEcalObs0Calibrator::calculateMijn(const edm::EventSetup &es, const edm:
 
 
 void MonoEcalObs0Calibrator::calculateHij()
-{ }
+{
 
-void MonoEcalObs0Calibrator::dumpCalibration()
-{ }
+  computeMij();
+
+  // let's invert M
+  MIJType::iterator mijiter = m_Mij.begin();
+  MIJType::iterator mijEnd = m_Mij.end();
+
+  unsigned count=0;
+  for( ; mijiter != mijEnd; mijiter++ ) {
+    std::vector<double> & hVec = m_hij[mijiter->first];
+    std::vector<double> & mVec = mijiter->second;
+    const unsigned size = mVec.size();
+    hVec.resize(size);
+
+    const unsigned side = std::sqrt(size);
+
+    double minEl = DBL_MAX;
+    double maxEl = -(DBL_MAX-1.);
+
+    // decompose mVec with lapack
+    int n = side;
+    int IPIV = side+1;
+    int * lda = new int[IPIV];
+    int INFO;
+    dgetrf_(&n,&n,&mVec[0],&n,lda,&INFO); 
+
+    bool infoTest = INFO==0;
+    std::cout << "Decomposition result: " << INFO << std::endl;
+    //assert(!INFO);
+
+    double * work = new double[size];
+    int lwork = size;
+    dgetri_(&n,&mVec[0],&n,lda,work,&lwork,&INFO);
+
+    infoTest = infoTest && INFO==0;
+    std::cout << "Inversion result: " << INFO << std::endl;
+    //assert(!INFO);
+
+    delete [] lda;
+    delete [] work;
+
+    if ( !infoTest ) {
+	hVec.clear();
+	continue;
+    }
+    for ( unsigned i=0; i != size; i++ )
+      hVec[i] = mVec[i];
+
+    /*CLHEP::HepMatrix mat(side,side);
+    CLHEP::HepMatrix check(side,side);
+    for ( unsigned i=0; i != side; i++ ) {
+      for ( unsigned j=0; j != side; j++ ) {
+	double el = mVec[i*side+j];
+    	mat[i][j] = el;
+    	check[i][j] = el;
+	if ( el > maxEl ) maxEl = el;
+	if ( el < minEl ) minEl = el;
+	assert( el == mVec[j*side+i] );
+      }
+    }
+
+    const double det = mat.determinant();
+    assert( det );
+
+    int success;
+    mat.invert(success);
+    assert(success);
+    if ( success ) {
+      for ( unsigned i=0; i != side; i++ ) {
+   	for ( unsigned j=0; j != side; j++ ) {
+	  hVec[i*side+j] = mat[i][j];
+    	}
+      }
+    }
+
+    CLHEP::HepMatrix res = check * mat;
+    for ( unsigned i=0; i != side; i++ ) {
+      std::cout << "i " << i << " " << res[i][i] << " " << check[i][i] << " " << mat[i][i] << std::endl;
+    }
+  
+    count++; */
+
+  }
+  
+
+}
+
 
 void MonoEcalObs0Calibrator::computeMij()
-{ }
+{
+
+  MIJNType::iterator mijn = m_Mijn.begin();
+  MIJNType::iterator mijnend = m_Mijn.end();
+  for ( ; mijn != mijnend; mijn++ ) {
+    std::vector<std::vector<double> > & data = mijn->second;
+    const unsigned size = data.size();
+    assert(size);
+    const unsigned N = data[0].size();
+    assert(N);
+    std::vector<double> & vec = m_Mij[mijn->first];
+    vec.clear();
+    vec.resize(size);
+
+    for ( unsigned i=0; i != size; i++ ) {
+      long double mij = 0.;
+      for ( unsigned n=0; n != N; n++ ) 
+	mij += data[i][n];
+
+      mij /= N;
+      vec[i] = (double)mij;
+    }
+    
+  }
+
+}
 
 
 } //end Mono namespace

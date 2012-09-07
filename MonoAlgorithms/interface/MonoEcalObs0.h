@@ -5,15 +5,20 @@
 // First monopole physics observable for CMS ECAL
 /////////////////////////////////////////////////////////
 
+#include <iostream>
 #include <vector>
+#include <string>
 #include <cassert>
 #include <cmath>
 #include <cfloat>
+#include <cstring>
 
+#include "Monopoles/MonoAlgorithms/interface/MonoDefs.h"
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalSeed.h"
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalCluster.h"
 #include "Monopoles/MonoAlgorithms/interface/ClustCategorizer.h"
 #include "Monopoles/MonoAlgorithms/interface/EnergyFlowFunctor.h"
+#include "Monopoles/MonoAlgorithms/interface/MonoEcalCalibReader.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
@@ -317,9 +322,18 @@ public:
   inline MonoEcalObs0(const edm::ParameterSet &ps) 
     :m_seedLength(ps.getParameter<unsigned>("StripSeedLength") )
     ,m_threshold(ps.getParameter<double>("SeedThreshold") )
+    ,m_calibName(ps.getParameter<std::string>("CalibrationName") )
+    ,m_wsSize(50U)
     {
       m_seedFinder = StripSeedFinder(m_seedLength,m_threshold,m_ecalMap.nCells());
       m_seedFinder.initialize();
+     
+      loadHMatTables(); 
+
+      m_workspace.resize(m_wsSize);
+
+      double pars[3] = {1.,0.4,0.4};
+      m_functor.setParameters(3,pars);
     } 
 
   inline virtual ~MonoEcalObs0()
@@ -329,12 +343,25 @@ public:
 
 
   // calculate observable method
-  double calculate(const edm::EventSetup &,const edm::Event &);
+  double calculate(const edm::EventSetup &,const edm::Event &, std::vector<double> *);
 
   // accessor methods
   inline const StripSeedFinder & finder() const { return m_seedFinder; }
   inline const ClusterBuilder & clusterBuilder() const { return m_clusterBuilder; }
   inline const EBmap & ecalMap() const { return m_ecalMap; }
+
+  // set the functor parameters
+  inline void setClusterParameters(const unsigned N, const double * pars)
+    {
+      m_functor.setParameters(N,pars);
+    }
+
+  // set the functor
+  inline void setFunctor(const EnergyFlowFunctor &functor)
+    {
+      m_functor = EnergyFlowFunctor(functor);
+    }
+
 
 private:
 
@@ -350,7 +377,10 @@ private:
   double mij(unsigned i, unsigned j);
 
   // load H matrix lookup tables
-  void loadHMatTables();
+  inline void loadHMatTables() {
+    MonoEcalCalibReader reader;
+    reader.readCalib("photonCalibration.dat",&m_hMatMap);
+  }
 
 
   // -- private member data
@@ -363,6 +393,13 @@ private:
   // ecalMap
   EBmap m_ecalMap;
 
+  // calibration file name
+  std::string m_calibName;
+
+  // some workspace
+  unsigned m_wsSize;
+  std::vector<double> m_workspace;
+
   // the seed finder
   StripSeedFinder m_seedFinder;
 
@@ -370,7 +407,10 @@ private:
   ClusterBuilder m_clusterBuilder;
 
   // H matrix look up table map
-  std::map<ClustCategorizer,std::vector<double> > m_hMatMap;
+  MIJType m_hMatMap;
+
+  // energy flow functor
+  EnergyFlowFunctor m_functor;
 
 };  
 
@@ -378,6 +418,9 @@ private:
 //
 // Calibrator class for the Monopole Ecal observable
 class MonoEcalObs0Calibrator {
+
+  typedef std::map<ClustCategorizer,std::vector<std::vector<double> > > MIJNType;
+  //typedef std::map<ClustCategorizer,std::vector<double> >	          MIJType;
 
 public:
 
@@ -405,7 +448,12 @@ public:
   void calculateHij();
 
   // dump calibration
-  void dumpCalibration();
+  inline void dumpCalibration()
+  { 
+    MonoEcalCalibReader reader;
+    reader.dumpCalib(m_calibName,m_hij);
+  }
+
 
   // set the functor parameters
   inline void setClusterParameters(const unsigned N, const double * pars)
@@ -426,8 +474,9 @@ private:
   void computeMij();
 
   // -- private member data
-  std::map<ClustCategorizer,std::vector<double> > m_hij;
-  std::map<ClustCategorizer,std::vector<std::vector<double> > > m_Mijn;
+  MIJType m_hij;
+  MIJType m_Mij;
+  MIJNType m_Mijn;
 
   // seed length
   unsigned m_seedLength;
@@ -440,11 +489,15 @@ private:
   StripSeedFinder m_seedFinder;
   ClusterBuilder m_clusterBuilder;
 
-  const unsigned m_wsSize;
+  unsigned m_wsSize;
   std::vector<double> m_workspace;
 
   // energy flow 
   EnergyFlowFunctor m_functor;
+
+  // output calibration files
+  std::string m_hOutput;
+  std::string m_mOutput;
 
 
 };  // end calibrator class

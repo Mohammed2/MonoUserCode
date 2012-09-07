@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoAnalysis.cc,v 1.2 2012/06/14 17:08:14 cowden Exp $
+// $Id: MonoAnalysis.cc,v 1.3 2012/08/03 21:41:52 cowden Exp $
 //
 //
 
@@ -122,6 +122,7 @@ class MonoAnalysis : public edm::EDAnalyzer {
 
     // Monopole Ecal Observables
     Mono::MonoEcalObs0 m_ecalObs;
+    //Mono::MonoEcalObs0Calibrator m_ecalCalib;
 
 
     // TFileService
@@ -141,6 +142,9 @@ class MonoAnalysis : public edm::EDAnalyzer {
     unsigned m_event;
 
     unsigned m_NPV;
+
+    // observables
+    std::vector<double> m_betas;
 
     // Ecal Observable information
     unsigned m_nSeeds;
@@ -244,6 +248,7 @@ MonoAnalysis::MonoAnalysis(const edm::ParameterSet& iConfig)
   ,m_Tag_Photons(iConfig.getParameter<edm::InputTag>("PhotonTag") )
   ,m_Tag_Electrons(iConfig.getParameter<edm::InputTag>("ElectronTag") )
   ,m_ecalObs(iConfig)
+  //,m_ecalCalib(iConfig)
 {
    //now do what ever initialization is needed
    m_seed_cell_eDist.resize(10);
@@ -307,8 +312,11 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   // get NPV for this event
   m_NPV = Mono::getNPV(iEvent,iSetup);
 
+  // execute calibration for event
+  //m_ecalCalib.calculateMijn(iSetup,iEvent);
+
   // execute observable calculations
-  double monoObs = m_ecalObs.calculate(iSetup,iEvent);
+  double monoObs = m_ecalObs.calculate(iSetup,iEvent,&m_betas);
   const Mono::StripSeedFinder & sFinder = m_ecalObs.finder();
   const Mono::EBmap & ebMap = m_ecalObs.ecalMap();
 
@@ -372,15 +380,14 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     Thist->GetXaxis()->SetTitle("#eta bin"); 
     Thist->GetYaxis()->SetTitle("#phi bin"); 
     Thist->GetZaxis()->SetTitle("time"); 
-    for ( unsigned j=wings; j != 0; j-- ) { 
+    /*for ( unsigned j=wings; j != 0; j-- ) { 
       int newPhiS = cPhi-j; 
       unsigned newPhi = 0U; 
       if ( newPhiS < 0 ) newPhi = nPhi+newPhiS; 
       else newPhi = newPhiS; 
       assert( newPhi < nPhi ); 
       for ( unsigned k=0; k != length; k++ ) { 
-	//hist->SetBinContent(k+1,wings+1-j,ebMap[newPhi*nEta+cEta+k]); 
-        hist->SetBinContent(k+1,wings+1-j,clusterBuilder.clusters()[i].energy((int)k,newPhiS,ebMap));
+        hist->SetBinContent(k+1,wings+1-j,clusterBuilder.clusters()[i].energy((int)k,-j,ebMap));
 	Thist->SetBinContent(k+1,j-wings+1,ebMap.time(newPhi*nEta+cEta+k)); 
       } 
     } 
@@ -389,12 +396,16 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       if ( newPhi >= nPhi ) newPhi = newPhi-nPhi;
       assert( newPhi < nPhi );
       for ( unsigned k=0; k != length; k++ ) {
-	//hist->SetBinContent(k+1,j+wings+1,ebMap[newPhi*nEta+cEta+k]); 
-	hist->SetBinContent(k+1,j+wings+1,clusterBuilder.clusters()[i].energy((int)k,(int)newPhi,ebMap)); 
+	hist->SetBinContent(k+1,j+wings+1,clusterBuilder.clusters()[i].energy((int)k,(int)j,ebMap)); 
 	Thist->SetBinContent(k+1,j+wings+1,ebMap.time(newPhi*nEta+cEta+k)); 
       }
+    }*/
+    for ( unsigned j=0; j != width; j++ ) {
+      int ji = (int)j-(int)width/2;
+      for ( unsigned k=0; k != length; k++ ) {
+	hist->SetBinContent(k+1,j+1,clusterBuilder.clusters()[i].energy(k,ji,ebMap));
+      }
     }
-
     // perform Gaussian fit to cluster
     // normalise to total energy of cluster
     hist->Scale( 1./clusterBuilder.clusters()[i].clusterEnergy() );
@@ -403,7 +414,7 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       m_func->SetParLimits(i+1,m_fitLimits[i][0],m_fitLimits[i][1]);
     hist->Fit("myFunc","QB");
     const TF1 * theFit = hist->GetFunction("myFunc");
-    //m_clust_N.push_back( theFit->GetParameter(0) );
+    m_clust_N.push_back( theFit->GetParameter(0) );
     m_clust_meanEta.push_back( theFit->GetParameter(1) );
     m_clust_sigEta.push_back( theFit->GetParameter(2) );
     m_clust_meanPhi.push_back( theFit->GetParameter(3) );
@@ -565,6 +576,8 @@ MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
 
   m_tree->Branch("NPV",&m_NPV,"NPV/i");
 
+  m_tree->Branch("betas_E",&m_betas);
+
   m_tree->Branch("seed_N",&m_nSeeds,"seed_N/i");
   m_tree->Branch("seed_E",&m_seed_E);
   m_tree->Branch("seed_eta",&m_seed_eta);
@@ -651,6 +664,8 @@ void MonoAnalysis::clear()
      m_event = 0;
   
     m_NPV = 0;
+
+    m_betas.clear();
 
     // obs information
     m_nSeeds = 0;
@@ -756,6 +771,8 @@ inline void MonoAnalysis::fillDRMap(const S &a, const T &bcoll, std::vector<doub
 void 
 MonoAnalysis::endRun(edm::Run const&, edm::EventSetup const&)
 {
+  //m_ecalCalib.calculateHij();
+  //m_ecalCalib.dumpCalibration();
 }
 
 // ------------ method called when starting to processes a luminosity block  ------------

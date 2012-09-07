@@ -39,8 +39,7 @@ const double MonoEcalCluster::energy(int etaDiff,int phiDiff, const EBmap &map) 
   } 
 
 #ifdef DEBUG
-  std::cout << "looking for energy at: " << newEta << " " << newEta << std::endl;
-  std::cout << "test map: " << &map << " size: " << nEta << " " << nPhi << std::endl;
+  std::cout << "looking for energy at: " << newEta << " " << newPhi << " " << newPhi*nEta+newEta << std::endl;
   std::cout.flush();
 #endif 
 
