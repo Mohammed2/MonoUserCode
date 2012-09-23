@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoAnalysis.cc,v 1.3 2012/08/03 21:41:52 cowden Exp $
+// $Id: MonoAnalysis.cc,v 1.4 2012/09/07 16:23:38 cowden Exp $
 //
 //
 
@@ -62,12 +62,12 @@
 #include "Monopoles/MonoAlgorithms/interface/NPVHelper.h"
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalObs0.h"
 #include "Monopoles/MonoAlgorithms/interface/EnergyFlowFunctor.h"
+#include "Monopoles/MonoAlgorithms/interface/ClustCategorizer.h"
 
 
 // ROOT includes
 #include "TTree.h"
 #include "TBranch.h"
-#include "TDirectory.h"
 #include "TH2D.h"
 #include "TH1D.h"
 #include "TF2.h"
@@ -133,6 +133,15 @@ class MonoAnalysis : public edm::EDAnalyzer {
     double m_fitLimits[4][2];
 
     Mono::EnergyFlowFunctor m_functor;
+
+    // directory for cluster map histograms
+    TFileDirectory *m_histDir;
+    // map cluster category (lengthxwidth thing) to a histogram
+    // showing the average energy or time  in each cell
+    TFileDirectory *m_avgDir;
+    std::map<Mono::ClustCategorizer,TH2D *> m_clustEMap;
+    std::map<Mono::ClustCategorizer,TH2D *> m_clustTMap;
+    std::map<Mono::ClustCategorizer,unsigned> m_clustCatCount;
 
     TTree * m_tree;
 
@@ -339,9 +348,9 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     char histName[50];
     sprintf(histName,"seedHist_%d_%d",iEvent.id().event(),i);
-    TH1D *hist = m_fs->make<TH1D>(histName,histName,seedLength,0,seedLength);
+    TH1D *hist = m_histDir->make<TH1D>(histName,histName,seedLength,0,seedLength);
     sprintf(histName,"seedTHist_%d_%d",iEvent.id().event(),i);
-    TH1D *Thist = m_fs->make<TH1D>(histName,histName,seedLength,0,seedLength);
+    TH1D *Thist = m_histDir->make<TH1D>(histName,histName,seedLength,0,seedLength);
 
     for (unsigned c=0; c != seedLength; c++ ) {
       //const unsigned loc = (iphi+c)*nEta+ieta;  // cross-check
@@ -367,12 +376,13 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     m_clust_L.push_back( length );
     m_clust_W.push_back( width );
 
+
     const unsigned wings = width/2U;
     char histName[50];
     sprintf(histName,"clustHist_%d_%d",iEvent.id().event(),i);
-    TH2D *hist = m_fs->make<TH2D>(histName,histName,length,-(float)length/2.,(float)length/2.,width,-(int)wings,wings);
+    TH2D *hist = m_histDir->make<TH2D>(histName,histName,length,-(float)length/2.,(float)length/2.,width,-(int)wings,wings);
     sprintf(histName,"clustTHist_%d_%d",iEvent.id().event(),i);
-    TH2D *Thist = m_fs->make<TH2D>(histName,histName,length,0,length,width,-(int)wings,wings);
+    TH2D *Thist = m_histDir->make<TH2D>(histName,histName,length,0,length,width,-(int)wings,wings);
 
     hist->GetXaxis()->SetTitle("#eta bin"); 
     hist->GetYaxis()->SetTitle("#phi bin"); 
@@ -380,38 +390,25 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     Thist->GetXaxis()->SetTitle("#eta bin"); 
     Thist->GetYaxis()->SetTitle("#phi bin"); 
     Thist->GetZaxis()->SetTitle("time"); 
-    /*for ( unsigned j=wings; j != 0; j-- ) { 
-      int newPhiS = cPhi-j; 
-      unsigned newPhi = 0U; 
-      if ( newPhiS < 0 ) newPhi = nPhi+newPhiS; 
-      else newPhi = newPhiS; 
-      assert( newPhi < nPhi ); 
-      for ( unsigned k=0; k != length; k++ ) { 
-        hist->SetBinContent(k+1,wings+1-j,clusterBuilder.clusters()[i].energy((int)k,-j,ebMap));
-	Thist->SetBinContent(k+1,j-wings+1,ebMap.time(newPhi*nEta+cEta+k)); 
-      } 
-    } 
-    for ( unsigned j=0; j != wings+1; j++ ) { 
-      unsigned newPhi = cPhi+j;
-      if ( newPhi >= nPhi ) newPhi = newPhi-nPhi;
-      assert( newPhi < nPhi );
-      for ( unsigned k=0; k != length; k++ ) {
-	hist->SetBinContent(k+1,j+wings+1,clusterBuilder.clusters()[i].energy((int)k,(int)j,ebMap)); 
-	Thist->SetBinContent(k+1,j+wings+1,ebMap.time(newPhi*nEta+cEta+k)); 
-      }
-    }*/
+
+    // fill in cluster energy and time maps
     for ( unsigned j=0; j != width; j++ ) {
       int ji = (int)j-(int)width/2;
       for ( unsigned k=0; k != length; k++ ) {
 	hist->SetBinContent(k+1,j+1,clusterBuilder.clusters()[i].energy(k,ji,ebMap));
+	Thist->SetBinContent(k+1,j+1,clusterBuilder.clusters()[i].time(k,ji,ebMap));
       }
     }
+
+    char text[50];
+    sprintf(text,"Cluster Energy beta=%.4f",m_betas[i]);
+    hist->SetTitle(text); 
     // perform Gaussian fit to cluster
     // normalise to total energy of cluster
     hist->Scale( 1./clusterBuilder.clusters()[i].clusterEnergy() );
     m_func->SetParameters(m_fitParams);
-    for ( unsigned i=0; i != 4; i++ )
-      m_func->SetParLimits(i+1,m_fitLimits[i][0],m_fitLimits[i][1]);
+    for ( unsigned j=0; j != 4; j++ )
+      m_func->SetParLimits(j+1,m_fitLimits[j][0],m_fitLimits[j][1]);
     hist->Fit("myFunc","QB");
     const TF1 * theFit = hist->GetFunction("myFunc");
     m_clust_N.push_back( theFit->GetParameter(0) );
@@ -421,6 +418,40 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     m_clust_sigPhi.push_back( theFit->GetParameter(4) );
     m_clust_chi2.push_back( theFit->GetChisquare() ); 
     m_clust_NDF.push_back( theFit->GetNDF() ); 
+
+
+    // fill in aggregate cluster information maps
+    Mono::ClustCategorizer cluCat(length,width);
+    std::map<Mono::ClustCategorizer,TH2D*>::iterator enIter = m_clustEMap.find(cluCat);
+    std::map<Mono::ClustCategorizer,TH2D*>::iterator tmIter = m_clustTMap.find(cluCat);
+    bool foundEn = enIter == m_clustEMap.end();
+    bool foundTm = tmIter == m_clustTMap.end();
+    assert( foundEn == foundTm ); // assert maps are somewhat synchronous
+
+    // if category not found create the histogram
+    if ( foundEn ) {
+      char name[50];
+      sprintf(name,"avgEnClust_%d_%d",cluCat.length,cluCat.width);
+      m_clustEMap[cluCat] = m_avgDir->make<TH2D>(name,name,cluCat.length,0,cluCat.length,cluCat.width,-(int)cluCat.width/2,(int)cluCat.width/2);
+      sprintf(name,"avgTmClust_%d_%d",cluCat.length,cluCat.width);
+      m_clustTMap[cluCat] = m_avgDir->make<TH2D>(name,name,cluCat.length,0,cluCat.length,cluCat.width,-(int)cluCat.width/2,(int)cluCat.width/2);
+    }
+
+    m_clustCatCount[cluCat]++;
+    TH2D * avgEnMap = m_clustEMap[cluCat];
+    TH2D * avgTmMap = m_clustTMap[cluCat];
+
+    assert( avgEnMap );
+    assert( avgTmMap );
+
+    for ( int binx = 1; binx <= hist->GetNbinsX(); binx++ ) {
+      for ( int biny = 1; biny <= hist->GetNbinsY(); biny++ ) {
+      	avgEnMap->SetBinContent(binx,biny,avgEnMap->GetBinContent(binx,biny)+hist->GetBinContent(binx,biny));
+      	avgTmMap->SetBinContent(binx,biny,avgTmMap->GetBinContent(binx,biny)+Thist->GetBinContent(binx,biny));
+      }
+    }
+    
+
   }
 
 
@@ -567,6 +598,8 @@ void
 MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
 {
 
+  m_histDir = new TFileDirectory( m_fs->mkdir("clusterMaps"));
+  m_avgDir = new TFileDirectory( m_fs->mkdir("avgClusterMaps"));
 
   m_tree = m_fs->make<TTree>("tree","tree");
 
@@ -773,6 +806,16 @@ MonoAnalysis::endRun(edm::Run const&, edm::EventSetup const&)
 {
   //m_ecalCalib.calculateHij();
   //m_ecalCalib.dumpCalibration();
+
+  std::map<Mono::ClustCategorizer,unsigned>::iterator counts = m_clustCatCount.begin();
+  std::map<Mono::ClustCategorizer,unsigned>::iterator end = m_clustCatCount.end();
+  for ( ; counts != end; counts++ ) {
+    const Mono::ClustCategorizer & cat = counts->first;
+    unsigned & count = counts->second;
+    m_clustEMap[cat]->Scale(1.0/count);  
+    m_clustTMap[cat]->Scale(1.0/count);
+  }
+
 }
 
 // ------------ method called when starting to processes a luminosity block  ------------

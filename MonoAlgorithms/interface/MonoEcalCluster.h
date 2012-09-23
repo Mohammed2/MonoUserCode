@@ -41,6 +41,11 @@ public:
   // the integer arguments are differences between the cluster's
   // ieta and iphi respectively.
   const double energy(int,int,const EBmap &) const;
+
+  // return the time in cell of EBmap
+  // the integer arguments are differences between the cluster's
+  // ieta and iphi respectively
+  const double time(int,int,const EBmap &) const;
   
 
 private:

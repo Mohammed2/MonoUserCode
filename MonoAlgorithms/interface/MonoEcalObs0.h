@@ -499,6 +499,9 @@ private:
   std::string m_hOutput;
   std::string m_mOutput;
 
+  // test using averages rather than fits
+  MIJNType  m_Eclusts;
+  MIJNType  m_Tclusts;
 
 };  // end calibrator class
 

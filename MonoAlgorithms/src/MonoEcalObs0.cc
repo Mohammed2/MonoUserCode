@@ -413,6 +413,7 @@ double MonoEcalObs0::calculate(const edm::EventSetup &es, const edm::Event &ev, 
 
 void MonoEcalObs0Calibrator::calculateMijn(const edm::EventSetup &es, const edm::Event &ev)
 {
+
   m_ecalMap.constructGeo(es);
   m_seedFinder.constructGeo(es);
 
