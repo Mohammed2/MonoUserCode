@@ -379,7 +379,7 @@ private:
   // load H matrix lookup tables
   inline void loadHMatTables() {
     MonoEcalCalibReader reader;
-    reader.readCalib("photonCalibration.dat",&m_hMatMap);
+    reader.readCalib("photonCalibration.dat",&m_hMatMap,&m_Eavg);
   }
 
 
@@ -408,6 +408,7 @@ private:
 
   // H matrix look up table map
   MIJType m_hMatMap;
+  MIJType m_Eavg;
 
   // energy flow functor
   EnergyFlowFunctor m_functor;
@@ -443,6 +444,7 @@ public:
 
   // calculate M_ij^n called for every event
   void calculateMijn(const edm::EventSetup &, const edm::Event &);
+  void fillClust(const edm::EventSetup &, const edm::Event &);
 
   // computed H_ij at end of run
   void calculateHij();
@@ -451,7 +453,7 @@ public:
   inline void dumpCalibration()
   { 
     MonoEcalCalibReader reader;
-    reader.dumpCalib(m_calibName,m_hij);
+    reader.dumpCalib(m_calibName,m_hij,m_Eavg);
   }
 
 
@@ -502,6 +504,7 @@ private:
   // test using averages rather than fits
   MIJNType  m_Eclusts;
   MIJNType  m_Tclusts;
+  MIJType   m_Eavg;
 
 };  // end calibrator class
 

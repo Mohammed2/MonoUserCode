@@ -485,6 +485,61 @@ void MonoEcalObs0Calibrator::calculateMijn(const edm::EventSetup &es, const edm:
 
 }
 
+void MonoEcalObs0Calibrator::fillClust(const edm::EventSetup &es, const edm::Event &ev)
+{
+
+  m_ecalMap.constructGeo(es);
+  m_seedFinder.constructGeo(es);
+
+  // fill ecal map
+  m_ecalMap.fillMap(ev);
+
+  // run seed finder
+  m_seedFinder.find(ev,m_ecalMap);
+
+  // run the cluster builders
+  m_clusterBuilder.buildClusters(m_seedFinder.nSeeds(),m_seedFinder.seeds(),m_ecalMap);
+
+
+  const unsigned nEta = m_ecalMap.nEta();
+
+  // cycle over clusters and fill appropriate map
+  const unsigned nClusters = m_clusterBuilder.nClusters();
+  const MonoEcalCluster * clusters = m_clusterBuilder.clusters();
+  for ( unsigned i=0; i != nClusters; i++ ) {
+    const unsigned length = clusters[i].clusterLength();
+    const unsigned width = clusters[i].clusterWidth();
+
+    const ClustCategorizer cat(length,width);
+
+    // check if catergory exists in map
+    std::map<ClustCategorizer,std::vector<std::vector<double> > >::iterator iter = m_Eclusts.find(cat);
+    if ( iter == m_Eclusts.end() ) {
+      std::vector<std::vector<double> > & vec = m_Eclusts[cat];
+      vec.resize( width*length );
+    }
+
+    std::vector<std::vector<double> > & vec = m_Eclusts[cat];
+
+
+
+    const unsigned ieta = clusters[i].ieta();
+    const unsigned iphi = clusters[i].iphi();
+    const unsigned size = width*length;
+    const double eTot = clusters[i].clusterEnergy();
+
+
+    // fill workspace
+    for ( unsigned k=0; k != width; k++ ) {
+      int ki = (int)k-(int)width/2;
+      for ( unsigned j=0; j != length; j++ ) {
+	unsigned num = k*length+j;
+	vec[num].push_back( clusters[i].energy(j,ki,m_ecalMap)/eTot );
+      }
+    }
+  
+  }
+}
 
 void MonoEcalObs0Calibrator::calculateHij()
 {
@@ -579,7 +634,60 @@ void MonoEcalObs0Calibrator::calculateHij()
 void MonoEcalObs0Calibrator::computeMij()
 {
 
-  MIJNType::iterator mijn = m_Mijn.begin();
+
+  // find average E in each cluster bin
+  MIJNType::iterator eijn = m_Eclusts.begin();
+  MIJNType::iterator eijnEnd = m_Eclusts.end();
+  for ( ; eijn != eijnEnd; eijn++ ) {
+    std::vector<std::vector<double> > & vec = eijn->second;
+    const unsigned size = vec.size();
+    assert(size);
+    const unsigned N = vec[0].size();
+    assert(N);
+    std::vector<double> & avgs = m_Eavg[eijn->first];
+    avgs.clear();
+    avgs.resize(size); 
+
+    // for loop over cluster elements
+    for ( unsigned i=0; i != size; i++ ) {
+      long double mean = 0.L;
+      // loop over cluster entries
+      for ( unsigned n=0; n != N; n++ ) {
+	mean += vec[i][n];	
+      }
+      mean /= N;
+      avgs[i] = mean;
+    }
+  }
+  
+  // compute Mij
+  for ( ; eijn != eijnEnd; eijn++ ) {
+    std::vector<std::vector<double> > & vec = eijn->second;
+    const unsigned size = vec.size();
+    assert(size);
+    const unsigned N = vec[0].size();
+    assert(N);
+    std::vector<double> & avgs = m_Eavg[eijn->first];
+
+    std::vector<double> & mijVec = m_Mij[eijn->first];
+    mijVec.clear();
+    mijVec.resize(size*size);
+
+    // loop over cluster elements
+    for ( unsigned i=0; i != size; i++ ) {
+      for ( unsigned j=0; j != size; j++ ) {
+	long double El = 0.L;
+	for ( unsigned n=0; n != N; n++ ) {
+	  El += (vec[i][n]-avgs[i])*(vec[j][n]-avgs[j]);
+	}		
+	El /= N;
+	mijVec[i*size+j] = El;
+      }
+    }
+    
+  }
+
+  /*MIJNType::iterator mijn = m_Mijn.begin();
   MIJNType::iterator mijnend = m_Mijn.end();
   for ( ; mijn != mijnend; mijn++ ) {
     std::vector<std::vector<double> > & data = mijn->second;
@@ -600,7 +708,7 @@ void MonoEcalObs0Calibrator::computeMij()
       vec[i] = (double)mij;
     }
     
-  }
+  }*/
 
 }
 
