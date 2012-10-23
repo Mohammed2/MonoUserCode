@@ -1,0 +1,25 @@
+
+
+\section{Monopole Monte Carlo Event Generation and Simulation of CMS Detector}
+% Pythia event generation
+The initial Monte Carlo event generation is performed by the Pythia event generator by generating fourth 
+generation leptons at a desired mass via the Drell-Yan process.  We then translate the particle identification (PID)
+code to $\pm411100$ which GEANT4 recognizes as a magnetic monopole.
+% PID translation
+% GEANT4 simulation
+
+With the correct PID code, GEANT4 performs the remaining simulation of the monopole behaviour in the CMS
+detector.
+
+% mass points 
+This analyiss considers monopoles simulated with the masses enumerated in Table~\ref{tab:masses}.
+\begin{table}[H]
+\centering
+\caption{Monopole mass points used in simulated $pp$ collision events of the CMS detector.}
+\label{tab:masses}
+\begin{tabular}{|c|c|c|c|c|c|c|c|}
+\hline
+200 & 500 & 800 & 1000 & 1200 & 1400 & 1700 & 2000 \\ \hline
+\end{tabular}
+\end{table}
+
