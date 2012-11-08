@@ -58,6 +58,9 @@ bool MonoTruthSnoop::snoop( const edm::Event &ev, const edm::EventSetup &es )
   const HepMC::GenEvent* mc = mcproduct->GetEvent();
   assert(mc);
 
+  // print the event record
+  // mc->print();  // just do this for debug purposes
+
     // Cycle over MC particles
     const HepMC::GenEvent::particle_const_iterator end = mc->particles_end();
     for (HepMC::GenEvent::particle_const_iterator p = mc->particles_begin();
@@ -100,6 +103,7 @@ bool MonoTruthSnoop::snoop( const edm::Event &ev, const edm::EventSetup &es )
 	}
 
 
+      // normally this should be a status of 1
       } else if ( particle->status() == 1 ) {
 
 

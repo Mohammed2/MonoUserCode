@@ -9,6 +9,7 @@
 
 namespace Mono {
 
+
 const double MonoEcalCluster::energy(int etaDiff,int phiDiff, const EBmap &map) const
 {
 

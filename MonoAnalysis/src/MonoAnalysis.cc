@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoAnalysis.cc,v 1.4 2012/09/07 16:23:38 cowden Exp $
+// $Id: MonoAnalysis.cc,v 1.5 2012/09/23 21:04:43 cowden Exp $
 //
 //
 
@@ -154,6 +154,7 @@ class MonoAnalysis : public edm::EDAnalyzer {
 
     // observables
     std::vector<double> m_betas;
+    std::vector<double> m_betaTs;
 
     // Ecal Observable information
     unsigned m_nSeeds;
@@ -180,6 +181,30 @@ class MonoAnalysis : public edm::EDAnalyzer {
     std::vector<double> m_clust_chi2;
     std::vector<double> m_clust_NDF;
     std::vector<double> m_clust_diff;
+    std::vector<double> m_clust_skewEta;
+    std::vector<double> m_clust_skewPhi;
+    std::vector<double> m_clust_seedFrac;
+    std::vector<double> m_clust_firstFrac;
+    std::vector<double> m_clust_secondFrac;
+    std::vector<double> m_clust_thirdFrac;
+    std::vector<double> m_clust_phiStripFrac;
+    std::vector<double> m_clust_matchDR;
+    std::vector<double> m_clust_tagged;
+    std::vector<double> m_clust_matchPID;
+    std::vector<double> m_clust_matchTime;
+    std::vector<double> m_clust_hsE;
+    std::vector<double> m_clust_hsTime;
+    std::vector<int>    m_clust_hsInSeed;
+    // Treat these arrays as 3D arrays
+    // There is space for 15 clusters of 100 total elements in each cluster
+    // One must use m_nClusters, m_clust_L, and m_clust_W when unpacking
+    // the cluster from the TTree.
+    static const unsigned WS = 100;
+    static const unsigned SS = 15*100;
+    double m_clust_Ecells[1500]; 
+    double m_clust_Tcells[1500]; 
+
+
 
     // Ecal hybrid clusters
     unsigned m_nClusterEgamma;
@@ -187,6 +212,9 @@ class MonoAnalysis : public edm::EDAnalyzer {
     std::vector<double> m_egClust_size;
     std::vector<double> m_egClust_eta;
     std::vector<double> m_egClust_phi;
+    std::vector<double> m_egClust_matchDR;
+    std::vector<double> m_egClust_tagged;
+    std::vector<double> m_egClust_matchPID;
     
 
 
@@ -325,7 +353,7 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   //m_ecalCalib.calculateMijn(iSetup,iEvent);
 
   // execute observable calculations
-  double monoObs = m_ecalObs.calculate(iSetup,iEvent,&m_betas);
+  double monoObs = m_ecalObs.calculate(iSetup,iEvent,&m_betas,&m_betaTs);
   const Mono::StripSeedFinder & sFinder = m_ecalObs.finder();
   const Mono::EBmap & ebMap = m_ecalObs.ecalMap();
 
@@ -364,15 +392,29 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
   }
 
+
+  /////////////////////////////////////
+  // cluster analysis
   const Mono::ClusterBuilder clusterBuilder = m_ecalObs.clusterBuilder();
   m_nClusters = clusterBuilder.nClusters();
-  for ( unsigned i=0; i != m_nClusters; i++ ) {
-    const unsigned width = clusterBuilder.clusters()[i].clusterWidth();
-    const unsigned length = clusterBuilder.clusters()[i].clusterLength();
-    const unsigned cEta = clusterBuilder.clusters()[i].ieta();
-    const unsigned cPhi = clusterBuilder.clusters()[i].iphi();
 
-    m_clust_E.push_back( clusterBuilder.clusters()[i].clusterEnergy() );
+  Mono::GenMonoClusterTagger tagger(0.3);
+  tagger.initialize(iEvent,iSetup);
+  if ( m_nClusters ) tagger.tag(m_nClusters,clusterBuilder.clusters(),ebMap);
+
+  for ( unsigned i=0; i != m_nClusters; i++ ) {
+    const Mono::MonoEcalCluster & cluster = clusterBuilder.clusters()[i];
+    const unsigned width = cluster.clusterWidth();
+    const unsigned length = cluster.clusterLength();
+    const unsigned cEta = cluster.ieta();
+    const unsigned cPhi = cluster.iphi();
+
+    m_clust_matchDR.push_back(tagger.matchDR()[i]);
+    m_clust_tagged.push_back(tagger.tagResult()[i]);
+    m_clust_matchPID.push_back(tagger.matchPID()[i]);
+    m_clust_matchTime.push_back(tagger.matchTime()[i]);
+
+    m_clust_E.push_back( cluster.clusterEnergy() );
     m_clust_L.push_back( length );
     m_clust_W.push_back( width );
 
@@ -391,25 +433,57 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     Thist->GetYaxis()->SetTitle("#phi bin"); 
     Thist->GetZaxis()->SetTitle("time"); 
 
+    double histMax=0.;
+    double hsTime=-1.;
+    int phiBin=UINT_MAX;
+
     // fill in cluster energy and time maps
+    const bool exceedsWS = length*width > WS;
+    const bool exceedsSS = length*width+i*WS > SS;
+    const bool excessive = exceedsWS || exceedsSS;
     for ( unsigned j=0; j != width; j++ ) {
       int ji = (int)j-(int)width/2;
       for ( unsigned k=0; k != length; k++ ) {
-	hist->SetBinContent(k+1,j+1,clusterBuilder.clusters()[i].energy(k,ji,ebMap));
-	Thist->SetBinContent(k+1,j+1,clusterBuilder.clusters()[i].time(k,ji,ebMap));
+        const double energy = cluster.energy(k,ji,ebMap);
+	if ( energy > histMax ) {
+	  histMax = energy;
+	  hsTime = cluster.time(k,ji,ebMap);
+	  phiBin = ji;
+	}
+	hist->SetBinContent(k+1,j+1,energy);
+	Thist->SetBinContent(k+1,j+1,cluster.time(k,ji,ebMap));
+	if ( !excessive ) m_clust_Ecells[i*WS+j*length+k] = cluster.energy(k,ji,ebMap);
+	if ( !excessive ) m_clust_Tcells[i*WS+j*length+k] = cluster.time(k,ji,ebMap);
       }
     }
+
+
+    m_clust_sigEta.push_back( hist->GetRMS(1) );
+    m_clust_sigPhi.push_back( hist->GetRMS(2) );
+    m_clust_skewEta.push_back( hist->GetSkewness(1) );
+    m_clust_skewPhi.push_back( hist->GetSkewness(2) );
+
+    const double clustE = cluster.clusterEnergy();
+    m_clust_seedFrac.push_back( cluster.clusterSeed().energy()/clustE );
+    const unsigned center = length/2U;
+    m_clust_firstFrac.push_back( cluster.energy(center,0,ebMap)/clustE );
+    m_clust_secondFrac.push_back( (cluster.energy(center+1U,0,ebMap)+cluster.energy(center-1U,0,ebMap))/clustE );
+    m_clust_thirdFrac.push_back( (cluster.energy(center+2U,0,ebMap)+cluster.energy(center-2U,0,ebMap))/clustE );
+
+    m_clust_hsE.push_back(histMax/clustE);
+    m_clust_hsTime.push_back(hsTime);
+    m_clust_hsInSeed.push_back(phiBin);
 
     char text[50];
     sprintf(text,"Cluster Energy beta=%.4f",m_betas[i]);
     hist->SetTitle(text); 
     // perform Gaussian fit to cluster
     // normalise to total energy of cluster
-    hist->Scale( 1./clusterBuilder.clusters()[i].clusterEnergy() );
+    hist->Scale( 1./cluster.clusterEnergy() );
     m_func->SetParameters(m_fitParams);
     for ( unsigned j=0; j != 4; j++ )
       m_func->SetParLimits(j+1,m_fitLimits[j][0],m_fitLimits[j][1]);
-    hist->Fit("myFunc","QB");
+    /*hist->Fit("myFunc","QB");
     const TF1 * theFit = hist->GetFunction("myFunc");
     m_clust_N.push_back( theFit->GetParameter(0) );
     m_clust_meanEta.push_back( theFit->GetParameter(1) );
@@ -417,7 +491,7 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     m_clust_meanPhi.push_back( theFit->GetParameter(3) );
     m_clust_sigPhi.push_back( theFit->GetParameter(4) );
     m_clust_chi2.push_back( theFit->GetChisquare() ); 
-    m_clust_NDF.push_back( theFit->GetNDF() ); 
+    m_clust_NDF.push_back( theFit->GetNDF() ); */
 
 
     // fill in aggregate cluster information maps
@@ -455,16 +529,24 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   }
 
 
+
   // get BasicCluster Collection
   Handle<BasicClusterCollection> bClusters;
   edm::InputTag bcClusterTag("hybridSuperClusters","hybridBarrelBasicClusters"); 
   iEvent.getByLabel(bcClusterTag,bClusters);
   const unsigned nbClusters = bClusters->size();
+
+  tagger.clearTags();
+  if ( nbClusters ) tagger.tag(nbClusters,&(*bClusters)[0]);
+
   for ( unsigned i=0; i != nbClusters; i++ ) {
     m_egClust_E.push_back( (*bClusters)[i].energy() );
     m_egClust_size.push_back( (*bClusters)[i].size() );
     m_egClust_eta.push_back( (*bClusters)[i].eta() );
     m_egClust_phi.push_back( (*bClusters)[i].phi() );
+    m_egClust_matchDR.push_back(tagger.matchDR()[i]);
+    m_egClust_tagged.push_back(tagger.tagResult()[i]);
+    m_egClust_matchPID.push_back(tagger.matchPID()[i]);
   }
   m_nClusterEgamma = nbClusters;
 
@@ -634,19 +716,32 @@ MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
   m_tree->Branch("clust_E",&m_clust_E);
   m_tree->Branch("clust_L",&m_clust_L);
   m_tree->Branch("clust_W",&m_clust_W);
-  m_tree->Branch("clust_fitN",&m_clust_N);
   m_tree->Branch("clust_sigEta",&m_clust_sigEta);
   m_tree->Branch("clust_sigPhi",&m_clust_sigPhi);
-  m_tree->Branch("clust_meanEta",&m_clust_meanEta);
-  m_tree->Branch("clust_meanPhi",&m_clust_meanPhi);
-  m_tree->Branch("clust_chi2",&m_clust_chi2);
-  m_tree->Branch("clust_NDF",&m_clust_NDF);
+  m_tree->Branch("clust_skewEta",&m_clust_skewEta);
+  m_tree->Branch("clust_skewPhi",&m_clust_skewPhi);
+  m_tree->Branch("clust_seedFrac",&m_clust_seedFrac);
+  m_tree->Branch("clust_firstFrac",&m_clust_firstFrac);
+  m_tree->Branch("clust_secondFrac",&m_clust_secondFrac);
+  m_tree->Branch("clust_thirdFrac",&m_clust_thirdFrac);
+  m_tree->Branch("clust_matchDR",&m_clust_matchDR);
+  m_tree->Branch("clust_matchTime",&m_clust_matchTime);
+  m_tree->Branch("clust_matchPID",&m_clust_matchPID);
+  m_tree->Branch("clust_tagged",&m_clust_tagged);
+  m_tree->Branch("clust_hsE",&m_clust_hsE);
+  m_tree->Branch("clust_hsTime",&m_clust_hsTime);
+  m_tree->Branch("clust_hsInSeed",&m_clust_hsInSeed);
+  m_tree->Branch("clust_Ecells",&m_clust_Ecells,"clust_Ecells[1500]/D");
+  m_tree->Branch("clust_Tcells",&m_clust_Tcells,"clust_Tcells[1500]/D");
 
   m_tree->Branch("egClust_N",&m_nClusterEgamma,"egClust_N/i");
   m_tree->Branch("egClust_E",&m_egClust_E);
   m_tree->Branch("egClust_size",&m_egClust_size);
   m_tree->Branch("egClust_eta",&m_egClust_eta);
   m_tree->Branch("egClust_phi",&m_egClust_phi);
+  m_tree->Branch("egClust_matchDR",&m_egClust_matchDR);
+  m_tree->Branch("egClust_matchPID",&m_egClust_matchPID);
+  m_tree->Branch("egClust_tagged",&m_egClust_tagged);
 
   m_tree->Branch("jet_N",&m_jet_N,"jet_N/i");
   m_tree->Branch("jet_E",&m_jet_E);
@@ -721,13 +816,25 @@ void MonoAnalysis::clear()
     m_clust_E.clear();
     m_clust_L.clear();
     m_clust_W.clear();
-    m_clust_N.clear();
     m_clust_sigEta.clear();
     m_clust_sigPhi.clear();
-    m_clust_meanEta.clear();
-    m_clust_meanPhi.clear();
-    m_clust_chi2.clear();
-    m_clust_NDF.clear();
+    m_clust_skewEta.clear();
+    m_clust_skewPhi.clear();
+    m_clust_seedFrac.clear();
+    m_clust_firstFrac.clear();
+    m_clust_secondFrac.clear();
+    m_clust_thirdFrac.clear();
+    m_clust_matchDR.clear();
+    m_clust_matchTime.clear();
+    m_clust_matchPID.clear();
+    m_clust_tagged.clear();
+    m_clust_hsE.clear();
+    m_clust_hsTime.clear();
+    m_clust_hsInSeed.clear();
+    for ( unsigned i=0; i != SS; i++ ){
+      m_clust_Ecells[i] = -999.;
+      m_clust_Tcells[i] = -999.;
+    }
 
 
     m_nClusterEgamma = 0;
@@ -735,6 +842,9 @@ void MonoAnalysis::clear()
     m_egClust_size.clear();
     m_egClust_eta.clear();
     m_egClust_phi.clear();
+    m_egClust_matchDR.clear();
+    m_egClust_matchPID.clear();
+    m_egClust_tagged.clear();
 
     // Jet information
     m_jet_N = 0;

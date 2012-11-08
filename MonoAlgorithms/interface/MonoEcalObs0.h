@@ -19,6 +19,8 @@
 #include "Monopoles/MonoAlgorithms/interface/ClustCategorizer.h"
 #include "Monopoles/MonoAlgorithms/interface/EnergyFlowFunctor.h"
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalCalibReader.h"
+#include "Monopoles/MonoAlgorithms/interface/MonoTruthSnooper.h"
+#include "Monopoles/MonoAlgorithms/interface/MonoGenTrackExtrapolator.h"
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
@@ -35,6 +37,17 @@ namespace edm {
 }
 
 namespace Mono {
+
+
+// ------------------------------------------------------------------
+// Some helper functions
+
+// check a matrix for nan elements
+// returns 1 if nan is first encountered
+// returns -1 if inf is first encountered
+// it returns at the first encounter of either nan or inf
+// otherwise it returns 0
+int nanChecker(unsigned N, const double *data);
 
 
 // ---------------------------------------------------------------------
@@ -148,12 +161,14 @@ class StripSeedFinder {
 public:
   inline StripSeedFinder()
     :m_seedLength(3U)
+    ,m_clustLength(5U)
     ,m_threshold(20.)
     ,m_nSeeds(0U) 
     { }
 
-  inline StripSeedFinder(const unsigned seedLength,const double threshold, const unsigned cells)
+  inline StripSeedFinder(const unsigned seedLength,const unsigned clustLength,const double threshold, const unsigned cells)
     :m_seedLength(seedLength)
+    ,m_clustLength(clustLength)
     ,m_threshold(threshold)
     ,m_nSeeds(0U)
     ,m_maxSeeds(cells)
@@ -259,8 +274,20 @@ private:
   // center hot spot of seeds in strip
   void centerSeeds(const EBmap &);
 
+  // set the length to the desired cluster length
+  void setLength(const EBmap &);
+
+  // truncate seed if too long, pass the seed index to truncate
+  void truncSeed(const EBmap &,unsigned);
+
+  // extend seed if too short, pass the seed index to extend
+  void extendSeed(const EBmap &,unsigned);
+
   // length of the seeds to find (number of cells in eta)
   unsigned m_seedLength;
+
+  // length desired for cluster
+  unsigned m_clustLength;
 
   // energy threshold of seed
   double m_threshold;
@@ -312,6 +339,147 @@ private:
 };
 
 
+// ----------------------------------------------------------
+// GenMonopole Cluster tagger
+class GenMonoClusterTagger {
+
+public:
+  inline GenMonoClusterTagger(double dRcut) 
+    :m_dRcut(dRcut) 
+    ,m_nClusters(0U)
+    { 
+      m_tagged.resize(50U);
+      m_dR.resize(50U);
+      m_matchTime.resize(50U);
+      m_monoMatch.resize(50U);
+    }
+
+
+  inline virtual ~GenMonoClusterTagger() { }
+
+  // initialize 
+  // setup geometry, find monopoles in generator 
+  void initialize(const edm::Event &ev, const edm::EventSetup &es);
+
+  // tag
+  void tag(unsigned nClusters, const MonoEcalCluster *clusters, const EBmap &map);
+
+  // generic tag routine
+  template<class T>
+  inline void tag(unsigned nObs, const T *obs);
+
+  // add gen monopole
+  inline void addMonopole(const HepMC::GenParticle part) {
+    m_monoPID.push_back(part.pdg_id());
+    m_extrap.setMonopole(part);
+    m_monoEta.push_back(m_extrap.etaVr(s_EcalR));
+    m_monoPhi.push_back(m_extrap.phi());
+    m_monoTime.push_back(m_extrap.tVr(s_EcalR));
+  } 
+
+  // clear member data
+  inline void clear() {
+    clearTags();
+    clearMonopoles();
+  }
+
+  // just clear the tag and cluster information
+  inline void clearTags() {
+    const unsigned vecSize = m_dR.size();
+    m_nClusters = 0U;
+    for ( unsigned i=0; i != vecSize; i++ ) {
+      m_dR[i] = 0.;
+      m_matchTime[i] = 0.;
+      m_tagged[i] = 0;
+      m_monoMatch[i] = 0;
+    }
+  }
+
+  // clear the generator particles
+  inline void clearMonopoles() {
+    m_monoEta.clear();
+    m_monoPhi.clear();
+    m_monoTime.clear();
+    m_monoPID.clear();
+  }
+
+  // accessor methods
+  inline unsigned nClusters() const { return m_nClusters; }
+
+  // closest match (not one to one matching)
+  inline const double * matchDR() const { return &m_dR[0]; }
+
+  // time estimate of monopole arrival
+  inline const double * matchTime() const { return &m_matchTime[0]; }
+
+  //  PID of closest match monopole (a check for monopole or anti-monopole)
+  inline const int * matchPID() const { return &m_monoMatch[0]; } 
+  
+  // tag results 
+  inline const int * tagResult() const { return &m_tagged[0]; }
+
+
+private:
+
+  MonoGenTrackExtrapolator m_extrap;
+
+  std::vector<double> m_dR;
+  std::vector<double> m_matchTime; // time estimate of monopole arrival
+  std::vector<int>    m_monoMatch;  // PID to distinguish monopole from anti-monopole
+  std::vector<int>   m_tagged;
+
+  std::vector<double> m_monoEta;
+  std::vector<double> m_monoPhi;
+  std::vector<double> m_monoTime;
+  std::vector<int> m_monoPID;
+
+  static constexpr double s_EcalR = 1.29;
+
+  double m_dRcut;  
+  unsigned m_nClusters;
+
+};
+
+
+template <class T>
+void GenMonoClusterTagger::tag(const unsigned nObs, const T * obs)
+{
+  assert( obs );
+  const unsigned nMonopoles = m_monoPID.size();
+
+  if ( nObs > m_tagged.size() ) {
+    m_tagged.resize(nObs);
+    m_dR.resize(nObs);
+    m_matchTime.resize(nObs);
+    m_monoMatch.resize(nObs);
+  }
+  
+  for ( unsigned c=0; c != nObs; c++ ) {
+    double minDR = DBL_MAX;
+    double minTime = DBL_MAX;
+    int minPID = 0;
+    const T & cluster = obs[c];
+    const double eta = cluster.eta();
+    const double phi = cluster.phi();
+    for ( unsigned m=0; m != nMonopoles; m++ ) {
+      const double dR = reco::deltaR(m_monoEta[m],m_monoPhi[m],eta,phi);
+      if ( dR < minDR ) {
+	minDR = dR;
+	minTime = m_monoTime[m];
+	minPID = m_monoPID[m];
+      }
+    }
+    m_dR[c] = minDR;
+    m_matchTime[c] = minTime;
+    m_monoMatch[c] = minPID;
+    const bool tagged = minDR < m_dRcut;
+    m_tagged[c] = tagged;
+    m_nClusters++;
+  } 
+
+}
+
+
 
 // ---------------------------------------------------------
 // MonoEcalObs0 
@@ -321,11 +489,13 @@ public:
 
   inline MonoEcalObs0(const edm::ParameterSet &ps) 
     :m_seedLength(ps.getParameter<unsigned>("StripSeedLength") )
+    ,m_clustLength(ps.getParameter<unsigned>("ClusterLength") )
     ,m_threshold(ps.getParameter<double>("SeedThreshold") )
-    ,m_calibName(ps.getParameter<std::string>("CalibrationName") )
+    ,m_calibName(ps.getParameter<std::string>("EnergyCalibrationName") )
+    ,m_tCalibName(ps.getParameter<std::string>("TimeCalibrationName") )
     ,m_wsSize(50U)
     {
-      m_seedFinder = StripSeedFinder(m_seedLength,m_threshold,m_ecalMap.nCells());
+      m_seedFinder = StripSeedFinder(m_seedLength,m_clustLength,m_threshold,m_ecalMap.nCells());
       m_seedFinder.initialize();
      
       loadHMatTables(); 
@@ -343,7 +513,10 @@ public:
 
 
   // calculate observable method
-  double calculate(const edm::EventSetup &,const edm::Event &, std::vector<double> *);
+  // The results per each cluster are returned to inside the vectors
+  // pass as arguments.  The energy beta is the first vector argument, whilst
+  // the time beta is the second vector argument.
+  double calculate(const edm::EventSetup &,const edm::Event &, std::vector<double> *, std::vector<double> *);
 
   // accessor methods
   inline const StripSeedFinder & finder() const { return m_seedFinder; }
@@ -379,13 +552,15 @@ private:
   // load H matrix lookup tables
   inline void loadHMatTables() {
     MonoEcalCalibReader reader;
-    reader.readCalib("photonCalibration.dat",&m_hMatMap,&m_Eavg);
+    reader.readCalib(m_calibName,&m_hMatMap,&m_Eavg);
+    reader.readCalib(m_tCalibName,&m_hTMatMap,&m_Tavg);
   }
 
 
   // -- private member data
   // seed length
   unsigned m_seedLength;
+  unsigned m_clustLength;
   // seed threshold
   double m_threshold;
   
@@ -395,6 +570,7 @@ private:
 
   // calibration file name
   std::string m_calibName;
+  std::string m_tCalibName;
 
   // some workspace
   unsigned m_wsSize;
@@ -409,6 +585,8 @@ private:
   // H matrix look up table map
   MIJType m_hMatMap;
   MIJType m_Eavg;
+  MIJType m_hTMatMap;
+  MIJType m_Tavg;
 
   // energy flow functor
   EnergyFlowFunctor m_functor;
@@ -427,11 +605,13 @@ public:
 
   inline MonoEcalObs0Calibrator(const edm::ParameterSet &ps)
     :m_seedLength(ps.getParameter<unsigned>("StripSeedLength"))
+    ,m_clustLength(ps.getParameter<unsigned>("ClusterLength"))
     ,m_threshold(ps.getParameter<double>("SeedThreshold"))
-    ,m_calibName(ps.getParameter<std::string>("CalibrationName")) 
+    ,m_calibName(ps.getParameter<std::string>("EnergyCalibrationName")) 
+    ,m_tCalibName(ps.getParameter<std::string>("TimeCalibrationName")) 
     ,m_wsSize(50U)
     {
-      m_seedFinder = StripSeedFinder(m_seedLength,m_threshold,m_ecalMap.nCells());
+      m_seedFinder = StripSeedFinder(m_seedLength,m_clustLength,m_threshold,m_ecalMap.nCells());
       m_seedFinder.initialize();
 
       m_workspace.resize(m_wsSize);
@@ -454,6 +634,7 @@ public:
   { 
     MonoEcalCalibReader reader;
     reader.dumpCalib(m_calibName,m_hij,m_Eavg);
+    reader.dumpCalib(m_tCalibName,m_hTij,m_Tavg);
   }
 
 
@@ -479,13 +660,17 @@ private:
   MIJType m_hij;
   MIJType m_Mij;
   MIJNType m_Mijn;
+  MIJType m_hTij;
+  MIJType m_MTij;
 
   // seed length
   unsigned m_seedLength;
+  unsigned m_clustLength;
   // seed threshold
   double m_threshold;
   // output calibration file name
   std::string m_calibName;
+  std::string m_tCalibName;
 
   EBmap m_ecalMap;
   StripSeedFinder m_seedFinder;
@@ -499,12 +684,13 @@ private:
 
   // output calibration files
   std::string m_hOutput;
-  std::string m_mOutput;
+  std::string m_tOutput;
 
   // test using averages rather than fits
   MIJNType  m_Eclusts;
   MIJNType  m_Tclusts;
   MIJType   m_Eavg;
+  MIJType   m_Tavg;
 
 };  // end calibrator class
 

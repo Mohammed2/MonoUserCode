@@ -8,10 +8,17 @@
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Utilities/interface/Exception.h"
 
+#include "Geometry/CaloGeometry/interface/CaloGeometry.h"
+#include "Geometry/Records/interface/CaloGeometryRecord.h"
+#include "Geometry/CaloGeometry/interface/CaloSubdetectorGeometry.h"
+#include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
+#include "DataFormats/EcalDetId/interface/EBDetId.h"
+
 #include "DataFormats/EcalRecHit/interface/EcalRecHit.h"
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/Common/interface/SortedCollection.h"
 #include "DataFormats/Math/interface/deltaPhi.h"
+#include "DataFormats/Math/interface/deltaR.h"
 
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalCalibReader.h"
 
@@ -32,6 +39,16 @@ void dgetri_(int *N,double *A,int *lda,int *IPIV,double *WORK, int*lwork, int *I
 
 
 namespace Mono {
+
+
+int nanChecker(const unsigned N, const double *data) {
+  for ( unsigned i=0; i != N; i++ ) {
+    if ( data[i] != data[i] ) return 1;
+    else if ( isinf(data[i]) ) return -1;
+  }
+  return 0;
+}
+
 
 // --------------------------- EBmap member functions ---------------------------------
 
@@ -163,6 +180,11 @@ bool StripSeedFinder::find(const edm::Event &ev, const EBmap &ecalMap)
   centerSeeds(ecalMap);
   if ( m_nSeeds > 1 ) mergeSeeds(ecalMap);
 
+  setLength(ecalMap);
+
+  for ( unsigned s=0; s != m_nSeeds; s++ )
+    assert( m_seeds[s].seedLength() == m_clustLength );
+
   return 1;
 }
 
@@ -285,6 +307,123 @@ void StripSeedFinder::centerSeeds(const EBmap &map)
 
 }
 
+
+void StripSeedFinder::setLength(const EBmap &map)
+{
+
+  // cycle over seeds find those that need to be truncated or extended
+  for ( unsigned s=0; s != m_nSeeds; s++ ) {
+    const MonoEcalSeed & seed = m_seeds[s];
+    const unsigned length = seed.seedLength();
+
+    if ( length > m_clustLength ) truncSeed(map,s);
+    else if ( length < m_clustLength ) extendSeed(map,s);
+    
+  }
+   
+
+}
+
+void StripSeedFinder::truncSeed(const EBmap &map, const unsigned s)
+{
+  assert(s < m_nSeeds);
+
+  const unsigned nEta = map.nEta();
+  
+  const MonoEcalSeed & seed = m_seeds[s]; 
+  const unsigned sLength = seed.seedLength();
+  if ( sLength < m_clustLength ) return;
+
+  // truncate the seed to the desired length and maximise the energy
+  // in that length
+  const unsigned iPhi = seed.iphi();
+  std::vector<std::pair<unsigned,double> > subSeeds;
+  unsigned curLoc = seed.ieta();
+  const unsigned sEnd = curLoc + sLength;
+  unsigned curEnd = curLoc+m_clustLength;
+  while ( curEnd != sEnd ) {
+    double energy = 0.;
+    unsigned loc = iPhi*nEta+curLoc; 
+    for ( unsigned i=0; i != m_clustLength; i++ ) {
+      energy += map[loc+i]; 
+    }
+    subSeeds.push_back( std::pair<unsigned,double>(curLoc,energy) );
+    curLoc++;
+    curEnd = curLoc+m_clustLength; 
+  }
+
+  // find the largest energy in subSeeds and keep as the seed
+  const unsigned nSubSeeds = subSeeds.size();
+  unsigned maxEl = 0U;
+  double maxVal = 0.;
+  for ( unsigned i=0; i != nSubSeeds; i++ ) {
+    const unsigned el = subSeeds[i].first;
+    const double val = subSeeds[i].second;
+    if ( val > maxVal ) {
+      maxVal = val;
+      maxEl = el;
+    }
+  }
+
+  assert( maxEl+m_clustLength < nEta );
+  assert( maxEl < 200 );
+
+  // put replace seed s by new seed
+  m_seeds[s] = MonoEcalSeed(m_clustLength,maxEl,iPhi,maxVal); 
+  
+
+}
+
+void StripSeedFinder::extendSeed(const EBmap &map, const unsigned s)
+{
+  assert( s < m_nSeeds );
+
+  const unsigned nEta = map.nEta();
+
+  const MonoEcalSeed & seed = m_seeds[s];
+  const unsigned sLength = seed.seedLength();
+  if ( sLength > m_clustLength ) return;
+
+  // extend the seed to desired length by symmetrically adding cells to either side
+  const unsigned iPhi = seed.iphi();
+  const unsigned diff = m_clustLength - sLength;
+  const unsigned leftAdd = diff/2U;
+  const unsigned rightAdd = diff-leftAdd;
+
+  const unsigned curLoc = seed.ieta();
+
+
+  assert( leftAdd+rightAdd == diff );
+
+  unsigned newLoc = UINT_MAX;
+  // make sure we don't hang off the end of the barrel
+  if ( leftAdd <= curLoc && rightAdd+sLength+curLoc < nEta ) {
+    newLoc = curLoc-leftAdd; 
+  } else if ( leftAdd > curLoc ) {
+    newLoc=0U;
+  } else if ( rightAdd+sLength+curLoc >= nEta ) {
+    newLoc = nEta-1U-m_clustLength;
+  } else {
+    // don't know how we got here
+    std::cerr << "StripSeedFinder::extendSeed unkown seed location" << std::endl;
+  }
+  
+  
+  double energy=0;
+  const unsigned loc = iPhi*nEta+newLoc;
+  for ( unsigned i=0; i != m_clustLength; i++ ) 
+    energy += map[loc+i];
+
+
+  assert( newLoc+m_clustLength<nEta);
+  assert( newLoc < nEta ) ;
+
+  m_seeds[s] = MonoEcalSeed(m_clustLength,newLoc,iPhi,energy);
+    
+
+}
+
+
 // --------------------------- ClusterBuilder member functions ---------------------
 
 void ClusterBuilder::buildClusters(const unsigned nSeeds, const MonoEcalSeed *seeds, const EBmap &map)
@@ -328,19 +467,88 @@ void ClusterBuilder::buildClusters(const unsigned nSeeds, const MonoEcalSeed *se
 	energy += map[newPhi*nEta+sEta+i];
       }
     }
- 
+
     m_clusters[m_nClusters++] = MonoEcalCluster(length,2*N+1U,sEta,sPhi,energy,seed); 
   }
   
 }
 
+// --------------------------- GenMonoClusterTagger member functions ----------------
+
+void GenMonoClusterTagger::initialize( const edm::Event &ev, const edm::EventSetup &es)
+{
+  
+  // get the generator product
+  MonoTruthSnoop snooper(ev,es);
+  const HepMC::GenParticle *mono = snooper.mono(Mono::monopole);
+  const HepMC::GenParticle *anti = snooper.mono(Mono::anti_monopole);
+
+  if ( mono ) {
+    m_extrap.setMonopole(*mono);
+    m_monoEta.push_back( m_extrap.etaVr(s_EcalR) );
+    m_monoTime.push_back( m_extrap.tVr(s_EcalR) );
+    m_monoPhi.push_back( m_extrap.phi() );
+    m_monoPID.push_back( mono->pdg_id() );
+  } 
+
+  if ( anti ) {
+    m_extrap.setMonopole(*anti);
+    m_monoEta.push_back( m_extrap.etaVr(s_EcalR) );
+    m_monoTime.push_back( m_extrap.tVr(s_EcalR) );
+    m_monoPhi.push_back( m_extrap.phi() );
+    m_monoPID.push_back( anti->pdg_id() );
+  }
+
+
+}
+
+void GenMonoClusterTagger::tag(const unsigned nClusters, const MonoEcalCluster *clusters, const EBmap &map)
+{
+  assert( clusters );
+  const unsigned nMonopoles = m_monoPID.size();
+
+  if ( nClusters > m_tagged.size() ) {
+    m_tagged.resize(nClusters);
+    m_dR.resize(nClusters);
+    m_matchTime.resize(nClusters);
+    m_monoMatch.resize(nClusters);
+  }
+
+  for ( unsigned c=0; c != nClusters; c++ ) {
+    double minDR = DBL_MAX;
+    double minTime = DBL_MAX;
+    int minPID = 0;
+    const MonoEcalCluster & cluster = clusters[c];
+    const unsigned iEta = cluster.ieta();
+    const unsigned iPhi = cluster.iphi();
+    const double eta = map.eta(iEta);
+    const double phi = map.phi(iPhi);
+    for ( unsigned m=0; m != nMonopoles; m++ ) {
+      const double dR = reco::deltaR(m_monoEta[m],m_monoPhi[m],eta,phi);
+      if ( dR < minDR ) {
+	minDR = dR;
+  	minTime = m_monoTime[m];
+	minPID = m_monoPID[m];
+      }
+    }
+    m_dR[c] = minDR;
+    m_matchTime[c] = minTime;
+    m_monoMatch[c] = minPID;
+    const bool tagged = minDR < m_dRcut;
+    m_tagged[c] = tagged;
+    m_nClusters++;
+  } 
+
+}
 
 // --------------------------- MonoEcalObs0 member functions ------------------------
 
-double MonoEcalObs0::calculate(const edm::EventSetup &es, const edm::Event &ev, std::vector<double> *betas)
+double MonoEcalObs0::calculate(const edm::EventSetup &es, const edm::Event &ev
+  , std::vector<double> *betas, std::vector<double> *betaTs)
 {
 
   assert( betas );
+  assert( betaTs );
 
   m_ecalMap.constructGeo(es);
   m_seedFinder.constructGeo(es);
@@ -366,9 +574,15 @@ double MonoEcalObs0::calculate(const edm::EventSetup &es, const edm::Event &ev, 
     const unsigned size = side*side;
    
     std::vector<double> & hMat = m_hMatMap[cat];
+    std::vector<double> & eMat = m_Eavg[cat];
     // assertion here on size, do better error checking and handling in the future
     // what to do if encounter un-categorized cluster size
-    assert( hMat.size() );
+    //assert( hMat.size() );
+    if ( !hMat.size() ) {
+      std::cerr << "MonoEcalObs0 encountered an unknown cluster size: " << length << " " << width
+      << " in event: " << ev.id().event() << std::endl;
+      continue;
+    }
 
     if ( m_wsSize < side ) {
       m_wsSize = side;
@@ -385,7 +599,8 @@ double MonoEcalObs0::calculate(const edm::EventSetup &es, const edm::Event &ev, 
       int ki = (int)i-(int)width/2;
       for ( unsigned j=0; j != length; j++ ) {
 	unsigned num = i*length+j;
-	m_workspace[num] = clusters[c].energy(j,ki,m_ecalMap)/eTot-m_functor(j-(int)length/2,ki-(int)width/2);
+	//m_workspace[num] = clusters[c].energy(j,ki,m_ecalMap)/eTot-m_functor(j-(int)length/2,ki-(int)width/2);
+	m_workspace[num] = clusters[c].energy(j,ki,m_ecalMap)/eTot-eMat[i*length+j];
       }
     }
 
@@ -519,7 +734,14 @@ void MonoEcalObs0Calibrator::fillClust(const edm::EventSetup &es, const edm::Eve
       vec.resize( width*length );
     }
 
+    std::map<ClustCategorizer,std::vector<std::vector<double> > >::iterator tter = m_Tclusts.find(cat);
+    if ( tter == m_Tclusts.end() ) {
+      std::vector<std::vector<double> > & tvec = m_Tclusts[cat];
+      tvec.resize( width*length );
+    }
+
     std::vector<std::vector<double> > & vec = m_Eclusts[cat];
+    std::vector<std::vector<double> > & tvec = m_Tclusts[cat];
 
 
 
@@ -535,6 +757,7 @@ void MonoEcalObs0Calibrator::fillClust(const edm::EventSetup &es, const edm::Eve
       for ( unsigned j=0; j != length; j++ ) {
 	unsigned num = k*length+j;
 	vec[num].push_back( clusters[i].energy(j,ki,m_ecalMap)/eTot );
+	tvec[num].push_back( clusters[i].time(j,ki,m_ecalMap) );
       }
     }
   
@@ -545,6 +768,9 @@ void MonoEcalObs0Calibrator::calculateHij()
 {
 
   computeMij();
+
+  assert( m_Mij.size() );
+  assert( m_MTij.size() );
 
   // let's invert M
   MIJType::iterator mijiter = m_Mij.begin();
@@ -591,6 +817,12 @@ void MonoEcalObs0Calibrator::calculateHij()
     for ( unsigned i=0; i != size; i++ )
       hVec[i] = mVec[i];
 
+    // check for nan elements
+    const int nc = nanChecker(hVec.size(),&hVec[0]);
+    if ( nc != 0 ) {
+      throw cms::Exception("Found nan/inf Hij element") << " nc = " << nc;
+    }
+
     /*CLHEP::HepMatrix mat(side,side);
     CLHEP::HepMatrix check(side,side);
     for ( unsigned i=0; i != side; i++ ) {
@@ -626,6 +858,55 @@ void MonoEcalObs0Calibrator::calculateHij()
     count++; */
 
   }
+
+
+
+  // let's invert M
+  MIJType::iterator tijiter = m_MTij.begin();
+  MIJType::iterator tijEnd = m_MTij.end();
+
+  for( ; tijiter != tijEnd; tijiter++ ) {
+    std::vector<double> & hVec = m_hTij[tijiter->first];
+    std::vector<double> & mVec = tijiter->second;
+    const unsigned size = mVec.size();
+    hVec.resize(size);
+
+    const unsigned side = std::sqrt(size);
+
+    double minEl = DBL_MAX;
+    double maxEl = -(DBL_MAX-1.);
+
+    // decompose mVec with lapack
+    int n = side;
+    int IPIV = side+1;
+    int * lda = new int[IPIV];
+    int INFO;
+    dgetrf_(&n,&n,&mVec[0],&n,lda,&INFO); 
+
+    bool infoTest = INFO==0;
+    std::cout << "Decomposition result: " << INFO << std::endl;
+    //assert(!INFO);
+
+    double * work = new double[size];
+    int lwork = size;
+    dgetri_(&n,&mVec[0],&n,lda,work,&lwork,&INFO);
+
+    infoTest = infoTest && INFO==0;
+    std::cout << "Inversion result: " << INFO << std::endl;
+    //assert(!INFO);
+
+    delete [] lda;
+    delete [] work;
+
+    if ( !infoTest ) {
+	hVec.clear();
+	continue;
+    }
+    for ( unsigned i=0; i != size; i++ )
+      hVec[i] = mVec[i];
+
+
+  }
   
 
 }
@@ -634,6 +915,8 @@ void MonoEcalObs0Calibrator::calculateHij()
 void MonoEcalObs0Calibrator::computeMij()
 {
 
+  assert( m_Eclusts.size() );
+  assert( m_Tclusts.size() );
 
   // find average E in each cluster bin
   MIJNType::iterator eijn = m_Eclusts.begin();
@@ -661,6 +944,7 @@ void MonoEcalObs0Calibrator::computeMij()
   }
   
   // compute Mij
+  eijn = m_Eclusts.begin();
   for ( ; eijn != eijnEnd; eijn++ ) {
     std::vector<std::vector<double> > & vec = eijn->second;
     const unsigned size = vec.size();
@@ -684,8 +968,72 @@ void MonoEcalObs0Calibrator::computeMij()
 	mijVec[i*size+j] = El;
       }
     }
+
+    // check for nan values
+    const int nc = nanChecker(mijVec.size(),&mijVec[0]);
+    if ( nc != 0 ) {
+      throw cms::Exception("Fond nan/inf in Mij") << " nc = " << nc;
+    }
     
   }
+
+
+
+  // find average T in each cluster bin
+  MIJNType::iterator tijn = m_Tclusts.begin();
+  MIJNType::iterator tijnEnd = m_Tclusts.end();
+  for ( ; tijn != tijnEnd; tijn++ ) {
+    std::vector<std::vector<double> > & vec = tijn->second;
+    const unsigned size = vec.size();
+    assert(size);
+    const unsigned N = vec[0].size();
+    assert(N);
+    std::vector<double> & avgs = m_Tavg[tijn->first];
+    avgs.clear();
+    avgs.resize(size); 
+
+    // for loop over cluster elements
+    for ( unsigned i=0; i != size; i++ ) {
+      long double mean = 0.L;
+      // loop over cluster entries
+      for ( unsigned n=0; n != N; n++ ) {
+	mean += vec[i][n];	
+      }
+      mean /= N;
+      avgs[i] = mean;
+    }
+  }
+  
+  // compute Mij
+  tijn = m_Tclusts.begin();
+  for ( ; tijn != tijnEnd; tijn++ ) {
+    std::vector<std::vector<double> > & vec = tijn->second;
+    const unsigned size = vec.size();
+    assert(size);
+    const unsigned N = vec[0].size();
+    assert(N);
+    std::vector<double> & avgs = m_Tavg[tijn->first];
+
+    std::vector<double> & mijVec = m_MTij[tijn->first];
+    mijVec.clear();
+    mijVec.resize(size*size);
+
+    // loop over cluster elements
+    for ( unsigned i=0; i != size; i++ ) {
+      for ( unsigned j=0; j != size; j++ ) {
+	long double El = 0.L;
+	for ( unsigned n=0; n != N; n++ ) {
+	  El += (vec[i][n]-avgs[i])*(vec[j][n]-avgs[j]);
+	}		
+	El /= N;
+	mijVec[i*size+j] = El;
+      }
+    }
+    
+  }
+
+
+
 
   /*MIJNType::iterator mijn = m_Mijn.begin();
   MIJNType::iterator mijnend = m_Mijn.end();

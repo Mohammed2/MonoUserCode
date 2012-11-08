@@ -5,6 +5,8 @@
 // Cluster class for monopole Ecal observables
 //////////////////////////////////////////////////////////////
 
+#include <cassert>
+
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalSeed.h"
 
 namespace Mono {
@@ -25,7 +27,7 @@ public:
     ,m_iPhi(iPhi)
     ,m_energy(E)
     ,m_seed(S)
-    { }
+    { assert(m_iEta < 200 ); }
 
   inline virtual ~MonoEcalCluster() { }
 

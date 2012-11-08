@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoSimAnalysis.cc,v 1.2 2012/06/14 17:08:14 cowden Exp $
+// $Id: MonoSimAnalysis.cc,v 1.3 2012/08/10 19:28:21 cowden Exp $
 //
 //
 
@@ -43,6 +43,7 @@
 #include "DataFormats/Math/interface/LorentzVector.h"
 #include "DataFormats/GeometryVector/interface/LocalPoint.h"
 #include "DataFormats/GeometryVector/interface/LocalVector.h"
+#include "DataFormats/Math/interface/deltaR.h"
 
 #include "Geometry/CaloGeometry/interface/CaloGeometry.h"
 
@@ -51,6 +52,7 @@
 #include "Monopoles/MonoAlgorithms/interface/MonoDefs.h"
 #include "Monopoles/MonoAlgorithms/interface/MonoSimTracker.h"
 #include "Monopoles/MonoAlgorithms/interface/MonoTruthSnooper.h"
+#include "Monopoles/MonoAlgorithms/interface/MonoGenTrackExtrapolator.h"
 
 
 // ROOT include files
@@ -188,12 +190,60 @@ class MonoSimAnalysis : public edm::EDAnalyzer {
     double m_mono_eta;
     double m_mono_phi;
     double m_mono_m;
+    double m_mono_px;
+    double m_mono_py;
+    double m_mono_pz;
+    double m_mono_x;
+    double m_mono_y;
+    double m_mono_z;
+
+    double m_monoExp_eta;
+    double m_monoExp_phi;
 
     double m_amon_p;
     double m_amon_eta;
     double m_amon_phi;
     double m_amon_m;
+    double m_amon_px;
+    double m_amon_py;
+    double m_amon_pz;
+    double m_amon_x;
+    double m_amon_y;
+    double m_amon_z;
 
+    double m_amonExp_eta;
+    double m_amonExp_phi;
+
+    double m_monoVirt_m;
+    double m_monoVirt_eta;
+    double m_monoVirt_phi;
+    double m_monoVirt_pt;
+    double m_monoVirt_px; 
+    double m_monoVirt_py;
+    double m_monoVirt_pz;
+    double m_monoVirt_E;
+    double m_monoVirt_dRmono;
+    
+    double m_amonVirt_m;
+    double m_amonVirt_eta;
+    double m_amonVirt_phi;
+    double m_amonVirt_pt;
+    double m_amonVirt_px; 
+    double m_amonVirt_py;
+    double m_amonVirt_pz;
+    double m_amonVirt_E;
+    double m_amonVirt_dRamon;
+
+    unsigned m_md_N;
+    unsigned m_ad_N;
+    std::vector<double> m_md_eta;
+    std::vector<double> m_md_phi;
+    std::vector<double> m_md_pdgId;
+    std::vector<double> m_md_pt;
+    std::vector<double> m_ad_eta;
+    std::vector<double> m_ad_phi;
+    std::vector<double> m_ad_pdgId;
+    std::vector<double> m_ad_pt;
 
 
 };
@@ -255,7 +305,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   clear();
 
 
-  Mono::MonoSimTracker<PSimHit,TrackerGeometry> monoPixST(iEvent,iSetup,Mono::PixelEBLowTof);
+  /*Mono::MonoSimTracker<PSimHit,TrackerGeometry> monoPixST(iEvent,iSetup,Mono::PixelEBLowTof);
   Mono::MonoSimTracker<PCaloHit,CaloGeometry> monoEcalST(iEvent,iSetup,Mono::EcalEB);
 
   Mono::MonoEnum m = Mono::monopole;
@@ -461,7 +511,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_amon_EcalSum_Nids++;
     m_amon_EcalSum_eta.push_back( monoEcalST.eta( (*it).first ) );
     m_amon_EcalSum_phi.push_back( monoEcalST.phi( (*it).first) );
-  }
+  }*/
 
 
   // find generator level information
@@ -469,11 +519,23 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   const HepMC::GenParticle *mono = snoopy.mono(Mono::monopole);
   const HepMC::GenParticle *amon = snoopy.mono(Mono::anti_monopole);
 
+  Mono::MonoGenTrackExtrapolator extrap;
+
   if ( mono ) {
     m_mono_p = cow::mag( mono->momentum().px(), mono->momentum().py(), mono->momentum().pz() );
     m_mono_eta = mono->momentum().eta();
     m_mono_phi = mono->momentum().phi();
     m_mono_m = mono->momentum().m();
+    m_mono_px = mono->momentum().px();
+    m_mono_py = mono->momentum().py();
+    m_mono_pz = mono->momentum().pz();
+    m_mono_x = mono->momentum().x();
+    m_mono_y = mono->momentum().y();
+    m_mono_z = mono->momentum().z();
+
+    extrap.setMonopole(*mono);
+    m_monoExp_eta = extrap.etaVr(129.);
+    m_monoExp_phi = extrap.phi();
   }
  
   if ( amon ) { 
@@ -481,10 +543,67 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_amon_eta = amon->momentum().eta();
     m_amon_phi = amon->momentum().phi();
     m_amon_m = amon->momentum().m(); 
+    m_amon_px = amon->momentum().px();
+    m_amon_py = amon->momentum().py();
+    m_amon_pz = amon->momentum().pz();
+    m_amon_x = amon->momentum().x();
+    m_amon_y = amon->momentum().y();
+    m_amon_z = amon->momentum().z();
+
+    extrap.setMonopole(*amon);
+    m_amonExp_eta = extrap.etaVr(129.);
+    m_amonExp_phi = extrap.phi();
   }
 
-  
-  
+  std::vector<const HepMC::GenParticle *> d1 = snoopy.monoDaughter(Mono::monopole);
+  std::vector<const HepMC::GenParticle *> d2 = snoopy.monoDaughter(Mono::anti_monopole);
+
+  for ( unsigned i=0; i < d1.size(); i++ ) {
+    std::cout << "Found monopole daughter!" << std::endl;
+    m_md_N++;
+    m_md_eta.push_back( d1[i]->momentum().eta() );
+    m_md_phi.push_back( d1[i]->momentum().phi() );
+    m_md_pdgId.push_back( d1[i]->pdg_id() );
+    m_md_pt.push_back( d1[i]->momentum().perp() );
+  }
+
+  for ( unsigned i=0; i < d2.size(); i++ ) {
+    std::cout << "Found monopole daughter!" << std::endl;
+    m_ad_N++;
+    m_ad_eta.push_back( d2[i]->momentum().eta() );
+    m_ad_phi.push_back( d2[i]->momentum().phi() );
+    m_ad_pdgId.push_back( d2[i]->pdg_id() );
+    m_ad_pt.push_back( d2[i]->momentum().perp() );
+  }
+ 
+  const HepMC::GenParticle * monoVirt = snoopy.monoGen(Mono::monopole);
+  const HepMC::GenParticle * amonVirt = snoopy.monoGen(Mono::anti_monopole);
+
+  if ( monoVirt ) {
+    const HepMC::FourVector & mom = monoVirt->momentum();
+    m_monoVirt_m = mom.m();
+    m_monoVirt_eta = mom.eta();
+    m_monoVirt_phi = mom.phi();
+    m_monoVirt_pt = mom.perp();
+    m_monoVirt_px = mom.px();
+    m_monoVirt_py = mom.py();
+    m_monoVirt_pz = mom.pz();
+    m_monoVirt_E  = mom.e();
+    if ( mono ) m_monoVirt_dRmono = reco::deltaR(m_monoVirt_eta,m_monoVirt_phi,m_mono_eta,m_mono_phi);
+  }
+
+  if ( amonVirt ) {
+    const HepMC::FourVector & mom = amonVirt->momentum();
+    m_amonVirt_m = mom.m();
+    m_amonVirt_eta = mom.eta();
+    m_amonVirt_phi = mom.phi();
+    m_amonVirt_pt = mom.perp();
+    m_amonVirt_px = mom.px();
+    m_amonVirt_py = mom.py();
+    m_amonVirt_pz = mom.pz();
+    m_amonVirt_E  = mom.e();
+    if ( amon ) m_amonVirt_dRamon = reco::deltaR(m_amonVirt_eta,m_amonVirt_phi,m_amon_eta,m_amon_phi);
+  }  
 
   m_tree->Fill();
 
@@ -506,7 +625,7 @@ MonoSimAnalysis::beginJob()
   m_tree = m_fs->make<TTree>("SimTree","SimTree");
 
 
-  m_tree->Branch("mono_Ecal_N", &m_mono_Ecal_N, "mono_Ecal_N/i");
+  /*m_tree->Branch("mono_Ecal_N", &m_mono_Ecal_N, "mono_Ecal_N/i");
   m_tree->Branch("mono_Ecal_x", &m_mono_Ecal_x);
   m_tree->Branch("mono_Ecal_y", &m_mono_Ecal_y);
   m_tree->Branch("mono_Ecal_z", &m_mono_Ecal_z);
@@ -577,19 +696,68 @@ MonoSimAnalysis::beginJob()
   m_tree->Branch("amon_PixSum_N", &m_amon_PixSum_N);
   m_tree->Branch("amon_PixSum_energy", &m_amon_PixSum_energy);
   m_tree->Branch("amon_PixSum_eta", &m_amon_PixSum_eta);
-  m_tree->Branch("amon_PixSum_phi", &m_amon_PixSum_phi);
+  m_tree->Branch("amon_PixSum_phi", &m_amon_PixSum_phi);*/
 
 
   m_tree->Branch("mono_p", &m_mono_p, "mono_p/D");
   m_tree->Branch("mono_eta", &m_mono_eta, "mono_eta/D");
   m_tree->Branch("mono_phi", &m_mono_phi, "mono_phi/D");
   m_tree->Branch("mono_m", &m_mono_m, "mono_m/D");
+  m_tree->Branch("mono_px",&m_mono_px, "mono_px/D");
+  m_tree->Branch("mono_py",&m_mono_py, "mono_py/D");
+  m_tree->Branch("mono_pz",&m_mono_pz, "mono_pz/D");
+  m_tree->Branch("mono_x",&m_mono_x, "mono_x/D");
+  m_tree->Branch("mono_y",&m_mono_y, "mono_y/D");
+  m_tree->Branch("mono_z",&m_mono_z, "mono_z/D");
+  
+  m_tree->Branch("monoExp_eta",&m_monoExp_eta, "monoExp_eta/D");
+  m_tree->Branch("monoExp_phi",&m_monoExp_phi, "monoExp_phi/D");
 
   m_tree->Branch("amon_p", &m_amon_p, "amon_p/D");
   m_tree->Branch("amon_eta", &m_amon_eta, "amon_eta/D");
   m_tree->Branch("amon_phi", &m_amon_phi, "amon_phi/D");
   m_tree->Branch("amon_m", &m_amon_m, "amon_m/D");
+  m_tree->Branch("amon_px",&m_amon_px, "amon_px/D");
+  m_tree->Branch("amon_py",&m_amon_py, "amon_py/D");
+  m_tree->Branch("amon_pz",&m_amon_pz, "amon_pz/D");
+  m_tree->Branch("amon_x",&m_amon_x, "amon_x/D");
+  m_tree->Branch("amon_y",&m_amon_y, "amon_y/D");
+  m_tree->Branch("amon_z",&m_amon_z, "amon_z/D");
 
+  m_tree->Branch("amonExp_eta",&m_amonExp_eta, "amonExp_eta/D");
+  m_tree->Branch("amonExp_phi",&m_amonExp_phi, "amonExp_phi/D");
+
+  m_tree->Branch("monoVirt_m",&m_monoVirt_m,"monoVirt_m");
+  m_tree->Branch("monoVirt_eta",&m_monoVirt_eta,"monoVirt_eta/D");
+  m_tree->Branch("monoVirt_phi",&m_monoVirt_phi,"monoVirt_phi/D");
+  m_tree->Branch("monoVirt_pt",&m_monoVirt_pt,"monoVirt_pt/D");
+  m_tree->Branch("monoVirt_px",&m_monoVirt_px,"monoVirt_px/D"); 
+  m_tree->Branch("monoVirt_py",&m_monoVirt_py,"monoVirt_py/D");
+  m_tree->Branch("monoVirt_pz",&m_monoVirt_pz,"monoVirt_pz/D");
+  m_tree->Branch("monoVirt_E",&m_monoVirt_E,"monoVirt_E/D");
+  m_tree->Branch("monoVirt_dRmono",&m_monoVirt_dRmono,"monoVirt_dRmono/D");
+
+  m_tree->Branch("amonVirt_m",&m_amonVirt_m,"amonVirt_m");
+  m_tree->Branch("amonVirt_eta",&m_amonVirt_eta,"amonVirt_eta/D");
+  m_tree->Branch("amonVirt_phi",&m_amonVirt_phi,"amonVirt_phi/D");
+  m_tree->Branch("amonVirt_pt",&m_amonVirt_pt,"amonVirt_pt/D");
+  m_tree->Branch("amonVirt_px",&m_amonVirt_px,"amonVirt_px/D"); 
+  m_tree->Branch("amonVirt_py",&m_amonVirt_py,"amonVirt_py/D");
+  m_tree->Branch("amonVirt_pz",&m_amonVirt_pz,"amonVirt_pz/D");
+  m_tree->Branch("amonVirt_E",&m_amonVirt_E,"amonVirt_E/D");
+  m_tree->Branch("amonVirt_dRamon",&m_amonVirt_dRamon,"amonVirt_dRamon/D");
+
+  m_tree->Branch("md_N",&m_md_N,"md_N/i");
+  m_tree->Branch("md_eta",&m_md_eta);
+  m_tree->Branch("md_phi",&m_md_phi);
+  m_tree->Branch("md_pdgId",&m_md_pdgId);
+  m_tree->Branch("md_pt",&m_md_pt);
+ 
+  m_tree->Branch("ad_N",&m_ad_N,"ad_N/i"); 
+  m_tree->Branch("ad_eta",&m_ad_eta);
+  m_tree->Branch("ad_phi",&m_ad_phi);
+  m_tree->Branch("ad_pdgId",&m_ad_pdgId);
+  m_tree->Branch("ad_pt",&m_ad_pt);
 
 }
 
@@ -720,12 +888,61 @@ MonoSimAnalysis::clear()
   m_mono_eta = 0.;
   m_mono_phi = 0.;
   m_mono_m = 0.;
+  m_mono_px = 0.;
+  m_mono_py = 0.;
+  m_mono_pz = 0.;
+  m_mono_x = 0.;
+  m_mono_y = 0.;
+  m_mono_z = 0.;
+
+  m_monoExp_eta = 0.;
+  m_monoExp_phi = 0.;
 
   m_amon_p = 0.;
   m_amon_eta = 0.;
   m_amon_phi = 0.;
   m_amon_m = 0.;
+  m_amon_px = 0.;
+  m_amon_py = 0.;
+  m_amon_pz = 0.;
+  m_amon_x = 0.;
+  m_amon_y = 0.;
+  m_amon_z = 0.;
 
+  m_amonExp_eta = 0.;
+  m_amonExp_phi = 0.;
+
+  m_monoVirt_m = 0.;
+  m_monoVirt_eta = 0.;
+  m_monoVirt_phi = 0.;
+  m_monoVirt_pt = 0.;
+  m_monoVirt_px = 0.;
+  m_monoVirt_py = 0.;
+  m_monoVirt_pz = 0.;
+  m_monoVirt_E = 0.;
+  m_monoVirt_dRmono = 0.;
+
+  m_amonVirt_m = 0.;
+  m_amonVirt_eta = 0.;
+  m_amonVirt_phi = 0.;
+  m_amonVirt_pt = 0.;
+  m_amonVirt_px = 0.;
+  m_amonVirt_py = 0.;
+  m_amonVirt_pz = 0.;
+  m_amonVirt_E = 0.;
+  m_amonVirt_dRamon = 0.;
+
+  m_md_N = 0U;
+  m_md_eta.clear();
+  m_md_phi.clear();
+  m_md_pdgId.clear();
+  m_md_pt.clear();
+
+  m_ad_N = 0U;
+  m_ad_eta.clear();
+  m_ad_phi.clear();
+  m_ad_pdgId.clear();
+  m_ad_pt.clear();
 
 }
 

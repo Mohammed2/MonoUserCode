@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  14 16:21:08 CST 2012
-// $Id$
+// $Id: MonoRecAnalysis.cc,v 1.1 2012/04/25 17:55:19 cowden Exp $
 //
 //
 
@@ -55,6 +55,7 @@
 // Monopole analysis includes
 #include "Monopoles/MonoAlgorithms/interface/EcalMapper.h"
 #include "Monopoles/MonoAlgorithms/interface/MonoTruthSnooper.h"
+#include "Monopoles/MonoAlgorithms/interface/MonoGenTrackExtrapolator.h"
 
 
 // ROOT includes
@@ -135,6 +136,18 @@ class MonoRecAnalysis : public edm::EDAnalyzer {
     std::vector<double> m_d2_phi;
     std::vector<int> m_d2_pdgId;
 
+    double m_monoExp_eta;
+    double m_monoExp_phi;
+    double m_monoExp_g;
+    double m_monoExp_m;
+    double m_monoExp_z;
+
+    double m_amonExp_eta;
+    double m_amonExp_phi;
+    double m_amonExp_g;
+    double m_amonExp_m;
+    double m_amonExp_z;
+
     std::vector<int> m_triggerDecision;
 
 
@@ -209,21 +222,44 @@ MonoRecAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   m_m1_phi = mono ? mono->momentum().phi() : -999.;
   m_m2_eta = anti ? anti->momentum().eta() : -999.;
   m_m2_phi = anti ? anti->momentum().phi() : -999.;
-
+  
   std::vector<const HepMC::GenParticle *> d1 = snoopy.monoDaughter(Mono::monopole);
   std::vector<const HepMC::GenParticle *> d2 = snoopy.monoDaughter(Mono::anti_monopole);
 
   for ( unsigned i=0; i < d1.size(); i++ ) {
+    std::cout << "Found monopole daughter!" << std::endl;
     m_d1_eta.push_back( d1[i]->momentum().eta() );
     m_d1_phi.push_back( d1[i]->momentum().phi() );
     m_d1_pdgId.push_back( d1[i]->pdg_id() );
   }
 
   for ( unsigned i=0; i < d2.size(); i++ ) {
+    std::cout << "Found monopole daughter!" << std::endl;
     m_d2_eta.push_back( d2[i]->momentum().eta() );
     m_d2_phi.push_back( d2[i]->momentum().phi() );
     m_d2_pdgId.push_back( d2[i]->pdg_id() );
   }
+
+  Mono::MonoGenTrackExtrapolator extrap;
+
+  if ( mono ) {
+    extrap.setMonopole(*mono);
+    m_monoExp_eta = extrap.etaVr(1.29);
+    m_monoExp_phi = extrap.phi();
+    m_monoExp_g = extrap.charge();
+    m_monoExp_m = extrap.mass();
+    m_monoExp_z = extrap.zVr(1.29);
+  }
+
+  if ( anti ) {
+    extrap.setMonopole(*anti);
+    m_amonExp_eta = extrap.etaVr(1.29);
+    m_amonExp_phi = extrap.phi();
+    m_amonExp_g = extrap.charge();
+    m_amonExp_m = extrap.mass(); 
+    m_amonExp_z = extrap.zVr(1.29);
+  }
+
 
 
   Mono::EcalMapper ecalMapper(iSetup);
@@ -339,8 +375,18 @@ MonoRecAnalysis::beginJob()
   m_tree->Branch("EcalPhi",&m_EcalPhi);
   m_tree->Branch("mono_eta",&m_m1_eta);
   m_tree->Branch("mono_phi",&m_m1_phi);
+  m_tree->Branch("monoExp_eta",&m_monoExp_eta);
+  m_tree->Branch("monoExp_z",&m_monoExp_z);
+  m_tree->Branch("monoExp_phi",&m_monoExp_phi);
+  m_tree->Branch("monoExp_g",&m_monoExp_g);
+  m_tree->Branch("monoExp_m",&m_monoExp_m);
   m_tree->Branch("anti_eta",&m_m2_eta);
   m_tree->Branch("anti_phi",&m_m2_phi);
+  m_tree->Branch("antiExp_eta",&m_amonExp_eta);
+  m_tree->Branch("antiExp_z",&m_amonExp_z);
+  m_tree->Branch("antiExp_phi",&m_amonExp_phi);
+  m_tree->Branch("antiExp_g",&m_amonExp_g);
+  m_tree->Branch("antiExp_m",&m_amonExp_m); 
   m_tree->Branch("md_eta",&m_d1_eta);
   m_tree->Branch("md_phi",&m_d1_phi);
   m_tree->Branch("md_pdgId",&m_d1_pdgId);
@@ -409,6 +455,15 @@ void MonoRecAnalysis::clear()
   m_m1_phi = 0.;
   m_m2_eta = 0.;
   m_m2_phi = 0.;
+
+  m_monoExp_eta = 0.;
+  m_monoExp_phi = 0.;
+  m_monoExp_g = 0.;
+  m_monoExp_m = 0.;
+  m_amonExp_eta = 0.;
+  m_amonExp_phi = 0.;
+  m_amonExp_g = 0.;
+  m_amonExp_m = 0.;
 
   m_run = 0.;
   m_lumi = 0.;
