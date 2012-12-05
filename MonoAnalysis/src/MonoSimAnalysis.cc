@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoSimAnalysis.cc,v 1.3 2012/08/10 19:28:21 cowden Exp $
+// $Id: MonoSimAnalysis.cc,v 1.4 2012/11/08 17:16:21 cowden Exp $
 //
 //
 
@@ -217,6 +217,7 @@ class MonoSimAnalysis : public edm::EDAnalyzer {
     double m_monoVirt_m;
     double m_monoVirt_eta;
     double m_monoVirt_phi;
+    double m_monoVirt_p;
     double m_monoVirt_pt;
     double m_monoVirt_px; 
     double m_monoVirt_py;
@@ -227,6 +228,7 @@ class MonoSimAnalysis : public edm::EDAnalyzer {
     double m_amonVirt_m;
     double m_amonVirt_eta;
     double m_amonVirt_phi;
+    double m_amonVirt_p;
     double m_amonVirt_pt;
     double m_amonVirt_px; 
     double m_amonVirt_py;
@@ -513,7 +515,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_amon_EcalSum_phi.push_back( monoEcalST.phi( (*it).first) );
   }*/
 
-
+    
   // find generator level information
   Mono::MonoTruthSnoop snoopy(iEvent,iSetup);
   const HepMC::GenParticle *mono = snoopy.mono(Mono::monopole);
@@ -584,6 +586,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_monoVirt_m = mom.m();
     m_monoVirt_eta = mom.eta();
     m_monoVirt_phi = mom.phi();
+    m_monoVirt_p = cow::mag(mom.px(),mom.py(),mom.pz());
     m_monoVirt_pt = mom.perp();
     m_monoVirt_px = mom.px();
     m_monoVirt_py = mom.py();
@@ -597,6 +600,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_amonVirt_m = mom.m();
     m_amonVirt_eta = mom.eta();
     m_amonVirt_phi = mom.phi();
+    m_amonVirt_p = cow::mag(mom.px(),mom.py(),mom.pz());
     m_amonVirt_pt = mom.perp();
     m_amonVirt_px = mom.px();
     m_amonVirt_py = mom.py();
@@ -730,6 +734,7 @@ MonoSimAnalysis::beginJob()
   m_tree->Branch("monoVirt_m",&m_monoVirt_m,"monoVirt_m");
   m_tree->Branch("monoVirt_eta",&m_monoVirt_eta,"monoVirt_eta/D");
   m_tree->Branch("monoVirt_phi",&m_monoVirt_phi,"monoVirt_phi/D");
+  m_tree->Branch("monoVirt_p",&m_monoVirt_p,"monoVirt_p/D");
   m_tree->Branch("monoVirt_pt",&m_monoVirt_pt,"monoVirt_pt/D");
   m_tree->Branch("monoVirt_px",&m_monoVirt_px,"monoVirt_px/D"); 
   m_tree->Branch("monoVirt_py",&m_monoVirt_py,"monoVirt_py/D");
@@ -740,6 +745,7 @@ MonoSimAnalysis::beginJob()
   m_tree->Branch("amonVirt_m",&m_amonVirt_m,"amonVirt_m");
   m_tree->Branch("amonVirt_eta",&m_amonVirt_eta,"amonVirt_eta/D");
   m_tree->Branch("amonVirt_phi",&m_amonVirt_phi,"amonVirt_phi/D");
+  m_tree->Branch("amonVirt_p",&m_amonVirt_p,"amonVirt_p/D");
   m_tree->Branch("amonVirt_pt",&m_amonVirt_pt,"amonVirt_pt/D");
   m_tree->Branch("amonVirt_px",&m_amonVirt_px,"amonVirt_px/D"); 
   m_tree->Branch("amonVirt_py",&m_amonVirt_py,"amonVirt_py/D");

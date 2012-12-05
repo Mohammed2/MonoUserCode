@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoAnalysis.cc,v 1.5 2012/09/23 21:04:43 cowden Exp $
+// $Id: MonoAnalysis.cc,v 1.6 2012/11/08 17:16:21 cowden Exp $
 //
 //
 
@@ -215,7 +215,6 @@ class MonoAnalysis : public edm::EDAnalyzer {
     std::vector<double> m_egClust_matchDR;
     std::vector<double> m_egClust_tagged;
     std::vector<double> m_egClust_matchPID;
-    
 
 
     // Jet information
@@ -551,6 +550,7 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   m_nClusterEgamma = nbClusters;
 
 
+
   // get jet collection
   Handle<reco::PFJetCollection> jets;
   iEvent.getByLabel(m_Tag_Jets,jets);
@@ -777,6 +777,7 @@ MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
   m_tree->Branch("ehit_eta",&m_ehit_eta);
   m_tree->Branch("ehit_phi",&m_ehit_phi);
   m_tree->Branch("ehit_time",&m_ehit_time);
+  m_tree->Branch("ehit_E",&m_ehit_energy);
 
 
 }
@@ -845,6 +846,7 @@ void MonoAnalysis::clear()
     m_egClust_matchDR.clear();
     m_egClust_matchPID.clear();
     m_egClust_tagged.clear();
+
 
     // Jet information
     m_jet_N = 0;
