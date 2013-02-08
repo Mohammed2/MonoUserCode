@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoAnalysis.cc,v 1.6 2012/11/08 17:16:21 cowden Exp $
+// $Id: MonoAnalysis.cc,v 1.7 2012/12/05 17:39:40 cowden Exp $
 //
 //
 
@@ -119,6 +119,7 @@ class MonoAnalysis : public edm::EDAnalyzer {
     edm::InputTag m_Tag_Jets;
     edm::InputTag m_Tag_Photons;
     edm::InputTag m_Tag_Electrons;
+    bool m_isData;
 
     // Monopole Ecal Observables
     Mono::MonoEcalObs0 m_ecalObs;
@@ -195,6 +196,8 @@ class MonoAnalysis : public edm::EDAnalyzer {
     std::vector<double> m_clust_hsE;
     std::vector<double> m_clust_hsTime;
     std::vector<int>    m_clust_hsInSeed;
+    std::vector<int>    m_clust_hsWeird;
+    std::vector<int>    m_clust_hsDiWeird;
     // Treat these arrays as 3D arrays
     // There is space for 15 clusters of 100 total elements in each cluster
     // One must use m_nClusters, m_clust_L, and m_clust_W when unpacking
@@ -257,6 +260,9 @@ class MonoAnalysis : public edm::EDAnalyzer {
     std::vector<double> m_ehit_time;
     std::vector<double> m_ehit_energy;
     std::vector<double> m_ehit_otEnergy;
+    std::vector<double> m_ehit_flag;
+    std::vector<double> m_ehit_kWeird;
+    std::vector<double> m_ehit_kDiWeird;
     std::vector<double> m_ehit_jetIso;
     std::vector<double> m_ehit_phoIso;
 
@@ -283,6 +289,7 @@ MonoAnalysis::MonoAnalysis(const edm::ParameterSet& iConfig)
   ,m_Tag_Jets(iConfig.getParameter<edm::InputTag>("JetTag") )
   ,m_Tag_Photons(iConfig.getParameter<edm::InputTag>("PhotonTag") )
   ,m_Tag_Electrons(iConfig.getParameter<edm::InputTag>("ElectronTag") )
+  ,m_isData(iConfig.getParameter<bool>("isData") )
   ,m_ecalObs(iConfig)
   //,m_ecalCalib(iConfig)
 {
@@ -398,8 +405,10 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   m_nClusters = clusterBuilder.nClusters();
 
   Mono::GenMonoClusterTagger tagger(0.3);
-  tagger.initialize(iEvent,iSetup);
-  if ( m_nClusters ) tagger.tag(m_nClusters,clusterBuilder.clusters(),ebMap);
+  if ( !m_isData ) {
+    tagger.initialize(iEvent,iSetup);
+    if ( m_nClusters ) tagger.tag(m_nClusters,clusterBuilder.clusters(),ebMap);
+  }
 
   for ( unsigned i=0; i != m_nClusters; i++ ) {
     const Mono::MonoEcalCluster & cluster = clusterBuilder.clusters()[i];
@@ -408,10 +417,12 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     const unsigned cEta = cluster.ieta();
     const unsigned cPhi = cluster.iphi();
 
-    m_clust_matchDR.push_back(tagger.matchDR()[i]);
-    m_clust_tagged.push_back(tagger.tagResult()[i]);
-    m_clust_matchPID.push_back(tagger.matchPID()[i]);
-    m_clust_matchTime.push_back(tagger.matchTime()[i]);
+    if ( !m_isData ) {
+      m_clust_matchDR.push_back(tagger.matchDR()[i]);
+      m_clust_tagged.push_back(tagger.tagResult()[i]);
+      m_clust_matchPID.push_back(tagger.matchPID()[i]);
+      m_clust_matchTime.push_back(tagger.matchTime()[i]);
+    }
 
     m_clust_E.push_back( cluster.clusterEnergy() );
     m_clust_L.push_back( length );
@@ -435,6 +446,8 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     double histMax=0.;
     double hsTime=-1.;
     int phiBin=UINT_MAX;
+    bool kWeird=false;
+    bool kDiWeird=false;
 
     // fill in cluster energy and time maps
     const bool exceedsWS = length*width > WS;
@@ -448,6 +461,8 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 	  histMax = energy;
 	  hsTime = cluster.time(k,ji,ebMap);
 	  phiBin = ji;
+       	  kWeird = cluster.getRecHit(k,ji,ebMap)->checkFlag( EcalRecHit::kWeird );
+       	  kDiWeird = cluster.getRecHit(k,ji,ebMap)->checkFlag( EcalRecHit::kDiWeird );
 	}
 	hist->SetBinContent(k+1,j+1,energy);
 	Thist->SetBinContent(k+1,j+1,cluster.time(k,ji,ebMap));
@@ -472,6 +487,8 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     m_clust_hsE.push_back(histMax/clustE);
     m_clust_hsTime.push_back(hsTime);
     m_clust_hsInSeed.push_back(phiBin);
+    m_clust_hsWeird.push_back( kWeird );
+    m_clust_hsDiWeird.push_back( kDiWeird );
 
     char text[50];
     sprintf(text,"Cluster Energy beta=%.4f",m_betas[i]);
@@ -482,15 +499,15 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     m_func->SetParameters(m_fitParams);
     for ( unsigned j=0; j != 4; j++ )
       m_func->SetParLimits(j+1,m_fitLimits[j][0],m_fitLimits[j][1]);
-    /*hist->Fit("myFunc","QB");
-    const TF1 * theFit = hist->GetFunction("myFunc");
-    m_clust_N.push_back( theFit->GetParameter(0) );
-    m_clust_meanEta.push_back( theFit->GetParameter(1) );
-    m_clust_sigEta.push_back( theFit->GetParameter(2) );
-    m_clust_meanPhi.push_back( theFit->GetParameter(3) );
-    m_clust_sigPhi.push_back( theFit->GetParameter(4) );
-    m_clust_chi2.push_back( theFit->GetChisquare() ); 
-    m_clust_NDF.push_back( theFit->GetNDF() ); */
+    //hist->Fit("myFunc","QB");
+    //const TF1 * theFit = hist->GetFunction("myFunc");
+    //m_clust_N.push_back( theFit->GetParameter(0) );
+    //m_clust_meanEta.push_back( theFit->GetParameter(1) );
+    //m_clust_sigEta.push_back( theFit->GetParameter(2) );
+    //m_clust_meanPhi.push_back( theFit->GetParameter(3) );
+    //m_clust_sigPhi.push_back( theFit->GetParameter(4) );
+    //m_clust_chi2.push_back( theFit->GetChisquare() ); 
+    //m_clust_NDF.push_back( theFit->GetNDF() ); 
 
 
     // fill in aggregate cluster information maps
@@ -536,16 +553,18 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   const unsigned nbClusters = bClusters->size();
 
   tagger.clearTags();
-  if ( nbClusters ) tagger.tag(nbClusters,&(*bClusters)[0]);
+  if ( !m_isData && nbClusters ) tagger.tag(nbClusters,&(*bClusters)[0]);
 
   for ( unsigned i=0; i != nbClusters; i++ ) {
     m_egClust_E.push_back( (*bClusters)[i].energy() );
     m_egClust_size.push_back( (*bClusters)[i].size() );
     m_egClust_eta.push_back( (*bClusters)[i].eta() );
     m_egClust_phi.push_back( (*bClusters)[i].phi() );
-    m_egClust_matchDR.push_back(tagger.matchDR()[i]);
-    m_egClust_tagged.push_back(tagger.tagResult()[i]);
-    m_egClust_matchPID.push_back(tagger.matchPID()[i]);
+    if ( !m_isData ) {
+      m_egClust_matchDR.push_back(tagger.matchDR()[i]);
+      m_egClust_tagged.push_back(tagger.tagResult()[i]);
+      m_egClust_matchPID.push_back(tagger.matchPID()[i]);
+    }
   }
   m_nClusterEgamma = nbClusters;
 
@@ -647,6 +666,10 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     m_ehit_time.push_back( (*itHit).time() );
     m_ehit_otEnergy.push_back( (*itHit).outOfTimeEnergy() );
 
+    m_ehit_kWeird.push_back( (*itHit).checkFlag(EcalRecHit::kWeird) );
+    m_ehit_kDiWeird.push_back( (*itHit).checkFlag(EcalRecHit::kDiWeird) );
+    m_ehit_flag.push_back( (*itHit).recoFlag() );
+
     fillDRMap(cell->getPosition(),photons,&dRPhotons);
     fillDRMap(cell->getPosition(),jets,&dRJets);
 
@@ -731,6 +754,8 @@ MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
   m_tree->Branch("clust_hsE",&m_clust_hsE);
   m_tree->Branch("clust_hsTime",&m_clust_hsTime);
   m_tree->Branch("clust_hsInSeed",&m_clust_hsInSeed);
+  m_tree->Branch("clust_hsWeird",&m_clust_hsWeird);
+  m_tree->Branch("clust_hsDiWeird",&m_clust_hsDiWeird);
   m_tree->Branch("clust_Ecells",&m_clust_Ecells,"clust_Ecells[1500]/D");
   m_tree->Branch("clust_Tcells",&m_clust_Tcells,"clust_Tcells[1500]/D");
 
@@ -778,6 +803,9 @@ MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
   m_tree->Branch("ehit_phi",&m_ehit_phi);
   m_tree->Branch("ehit_time",&m_ehit_time);
   m_tree->Branch("ehit_E",&m_ehit_energy);
+  m_tree->Branch("ehit_kWeird",&m_ehit_kWeird);
+  m_tree->Branch("ehit_kDiWeird",&m_ehit_kDiWeird);
+  m_tree->Branch("ehit_flag",&m_ehit_flag);
 
 
 }
@@ -832,6 +860,8 @@ void MonoAnalysis::clear()
     m_clust_hsE.clear();
     m_clust_hsTime.clear();
     m_clust_hsInSeed.clear();
+    m_clust_hsWeird.clear();
+    m_clust_hsDiWeird.clear();
     for ( unsigned i=0; i != SS; i++ ){
       m_clust_Ecells[i] = -999.;
       m_clust_Tcells[i] = -999.;
@@ -888,6 +918,9 @@ void MonoAnalysis::clear()
     m_ehit_time.clear();
     m_ehit_energy.clear();
     m_ehit_otEnergy.clear();
+    m_ehit_kWeird.clear();
+    m_ehit_kDiWeird.clear();
+    m_ehit_flag.clear();
     m_ehit_jetIso.clear();
     m_ehit_phoIso.clear();
 
