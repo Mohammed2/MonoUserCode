@@ -14,7 +14,6 @@
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
 #include "DataFormats/EcalDetId/interface/EBDetId.h"
 
-#include "DataFormats/EcalRecHit/interface/EcalRecHit.h"
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/Common/interface/SortedCollection.h"
 #include "DataFormats/Math/interface/deltaPhi.h"
@@ -72,6 +71,7 @@ void EBmap::fillMap(const edm::Event &ev)
     if ( energy > maxE ) maxE = energy;
     m_ecalMap[loc] = energy;
     m_ecalTMap[loc] = (*ecalRecHits)[i].time();
+    m_ecalRecHitMap[loc] = &(*ecalRecHits)[i];
   }  
 
 }
@@ -182,8 +182,12 @@ bool StripSeedFinder::find(const edm::Event &ev, const EBmap &ecalMap)
 
   setLength(ecalMap);
 
+  //for ( unsigned s=0; s != m_nSeeds; s++ )
+  //  assert( m_seeds[s].seedLength() == m_clustLength );
+
+  // check for seeds under threshold
   for ( unsigned s=0; s != m_nSeeds; s++ )
-    assert( m_seeds[s].seedLength() == m_clustLength );
+    assert( m_seeds[s].energy() >= 0. );
 
   return 1;
 }
@@ -270,6 +274,7 @@ void StripSeedFinder::centerSeeds(const EBmap &map)
       }
     }
 
+
     // is the hotspot centered?
     // if not...buffer the short side 
     const int middle = length/2;
@@ -289,19 +294,19 @@ void StripSeedFinder::centerSeeds(const EBmap &map)
       if ( dist < 0 ) (unsigned)abs(dist) < newEta ? newEta -= (unsigned)abs(dist) : newEta = 0U;
     } else continue; // no need to do anything to the seed since the hot spot is centered
 
-    if ( newEta+newLength >= nEta ) newLength = nEta-newEta-1; 
+    if ( newEta+newLength-1U >= nEta ) newLength = nEta-newEta; 
 
     assert( newEta < nEta );
-    assert( newLength + newEta < nEta );
+    assert( newLength-1U + newEta < nEta );
 
     // find the new energy
     const unsigned newLoc = seed.iphi()*nEta+newEta;
     double newE = 0.;
     for ( unsigned i=0; i != newLength; i++ )
-      newE += map[loc+i];
-   
+      newE += map[newLoc+i];
+  
     // update seed list   
-    m_seeds[s] = MonoEcalSeed(newLength,newEta,seed.iphi(),newLength);
+    m_seeds[s] = MonoEcalSeed(newLength,newEta,seed.iphi(),newE);
     
   }
 
@@ -367,6 +372,7 @@ void StripSeedFinder::truncSeed(const EBmap &map, const unsigned s)
 
   assert( maxEl+m_clustLength < nEta );
   assert( maxEl < 200 );
+  assert( maxVal > 0.);
 
   // put replace seed s by new seed
   m_seeds[s] = MonoEcalSeed(m_clustLength,maxEl,iPhi,maxVal); 
@@ -390,19 +396,19 @@ void StripSeedFinder::extendSeed(const EBmap &map, const unsigned s)
   const unsigned leftAdd = diff/2U;
   const unsigned rightAdd = diff-leftAdd;
 
-  const unsigned curLoc = seed.ieta();
+  const unsigned curEta = seed.ieta();
 
 
   assert( leftAdd+rightAdd == diff );
 
-  unsigned newLoc = UINT_MAX;
+  unsigned newEta = UINT_MAX;
   // make sure we don't hang off the end of the barrel
-  if ( leftAdd <= curLoc && rightAdd+sLength+curLoc < nEta ) {
-    newLoc = curLoc-leftAdd; 
-  } else if ( leftAdd > curLoc ) {
-    newLoc=0U;
-  } else if ( rightAdd+sLength+curLoc >= nEta ) {
-    newLoc = nEta-1U-m_clustLength;
+  if ( leftAdd <= curEta && rightAdd+sLength-1U+curEta < nEta ) {
+    newEta = curEta-leftAdd; 
+  } else if ( leftAdd > curEta ) {
+    newEta=0U;
+  } else if ( rightAdd+sLength-1U+curEta >= nEta ) {
+    newEta = nEta-m_clustLength;
   } else {
     // don't know how we got here
     std::cerr << "StripSeedFinder::extendSeed unkown seed location" << std::endl;
@@ -410,15 +416,16 @@ void StripSeedFinder::extendSeed(const EBmap &map, const unsigned s)
   
   
   double energy=0;
-  const unsigned loc = iPhi*nEta+newLoc;
+  const unsigned loc = iPhi*nEta+newEta;
   for ( unsigned i=0; i != m_clustLength; i++ ) 
     energy += map[loc+i];
 
 
-  assert( newLoc+m_clustLength<nEta);
-  assert( newLoc < nEta ) ;
+  assert( newEta+m_clustLength-1U<nEta);
+  assert( newEta < nEta ) ;
+  assert( energy > 0. );
 
-  m_seeds[s] = MonoEcalSeed(m_clustLength,newLoc,iPhi,energy);
+  m_seeds[s] = MonoEcalSeed(m_clustLength,newEta,iPhi,energy);
     
 
 }

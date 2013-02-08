@@ -8,6 +8,7 @@
 #include <cassert>
 
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalSeed.h"
+#include "DataFormats/EcalRecHit/interface/EcalRecHit.h"
 
 namespace Mono {
 
@@ -48,6 +49,12 @@ public:
   // the integer arguments are differences between the cluster's
   // ieta and iphi respectively
   const double time(int,int,const EBmap &) const;
+
+  // return the rechit in question
+  // the first two integer arguments are the difference between the cluster's
+  // ieta and iphi respectively
+  const EcalRecHit * getRecHit(int,int,const EBmap &) const;
+
   
 
 private:

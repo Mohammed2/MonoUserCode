@@ -29,6 +29,7 @@
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
 #include "DataFormats/EcalDetId/interface/EBDetId.h"
+#include "DataFormats/EcalRecHit/interface/EcalRecHit.h"
 
 // forward declarations
 namespace edm {
@@ -77,6 +78,7 @@ public:
 
       m_ecalMap.resize(m_nCells);
       m_ecalTMap.resize(m_nCells);
+      m_ecalRecHitMap.resize(m_nCells);
     }
 
   // fill map
@@ -108,6 +110,14 @@ public:
       assert(m_ecalTMap.size());
       assert(bin < m_nCells);
       return m_ecalTMap[bin];
+    }
+
+  // return the RecHit in the given bin
+  inline const EcalRecHit * getRecHit(const unsigned bin ) const
+    {
+      assert(m_ecalRecHitMap.size());
+      assert(bin < m_nCells);
+      return m_ecalRecHitMap[bin];
     }
 
 
@@ -146,6 +156,8 @@ private:
   std::vector<double> m_ecalMap;
   // map of time
   std::vector<double> m_ecalTMap;
+  // map of rechits
+  std::vector<const EcalRecHit*> m_ecalRecHitMap;
 
 
   // calorimetry geometry
