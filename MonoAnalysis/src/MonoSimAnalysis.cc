@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoSimAnalysis.cc,v 1.4 2012/11/08 17:16:21 cowden Exp $
+// $Id: MonoSimAnalysis.cc,v 1.5 2012/12/05 17:39:41 cowden Exp $
 //
 //
 
@@ -307,13 +307,13 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   clear();
 
 
-  /*Mono::MonoSimTracker<PSimHit,TrackerGeometry> monoPixST(iEvent,iSetup,Mono::PixelEBLowTof);
+  Mono::MonoSimTracker<PSimHit,TrackerGeometry> monoPixST(iEvent,iSetup,Mono::PixelEBLowTof);
   Mono::MonoSimTracker<PCaloHit,CaloGeometry> monoEcalST(iEvent,iSetup,Mono::EcalEB);
 
   Mono::MonoEnum m = Mono::monopole;
   Mono::MonoEnum a = Mono::anti_monopole;
 
-  // fill monopole Pixel SimHit vectors
+  /*// fill monopole Pixel SimHit vectors
   for ( unsigned i=0; i != monoPixST.size(Mono::monopole); i++ ) {
 
     const double x = monoPixST.x(m,i);
@@ -424,7 +424,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_amon_PixSum_Nids++;
     m_amon_PixSum_eta.push_back( monoPixST.eta( (*it).first ) );
     m_amon_PixSum_phi.push_back( monoPixST.phi( (*it).first ) );
-  }
+  }*/
 
 
 
@@ -463,7 +463,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
  
   // get monopole aggregate data 
   const std::map<unsigned, Mono::SumStruct> monoEcalIdSumMap = monoEcalST.idSumMap(m);
-  it = monoEcalIdSumMap.begin();  
+  std::map<unsigned, Mono::SumStruct>::const_iterator it = monoEcalIdSumMap.begin();  
   for ( ; it != monoEcalIdSumMap.end(); it++ ) {
     m_mono_EcalSum_id.push_back( (*it).first );
     m_mono_EcalSum_N.push_back( (*it).second.N );
@@ -513,7 +513,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_amon_EcalSum_Nids++;
     m_amon_EcalSum_eta.push_back( monoEcalST.eta( (*it).first ) );
     m_amon_EcalSum_phi.push_back( monoEcalST.phi( (*it).first) );
-  }*/
+  }
 
     
   // find generator level information
@@ -629,7 +629,7 @@ MonoSimAnalysis::beginJob()
   m_tree = m_fs->make<TTree>("SimTree","SimTree");
 
 
-  /*m_tree->Branch("mono_Ecal_N", &m_mono_Ecal_N, "mono_Ecal_N/i");
+  m_tree->Branch("mono_Ecal_N", &m_mono_Ecal_N, "mono_Ecal_N/i");
   m_tree->Branch("mono_Ecal_x", &m_mono_Ecal_x);
   m_tree->Branch("mono_Ecal_y", &m_mono_Ecal_y);
   m_tree->Branch("mono_Ecal_z", &m_mono_Ecal_z);
@@ -700,7 +700,7 @@ MonoSimAnalysis::beginJob()
   m_tree->Branch("amon_PixSum_N", &m_amon_PixSum_N);
   m_tree->Branch("amon_PixSum_energy", &m_amon_PixSum_energy);
   m_tree->Branch("amon_PixSum_eta", &m_amon_PixSum_eta);
-  m_tree->Branch("amon_PixSum_phi", &m_amon_PixSum_phi);*/
+  m_tree->Branch("amon_PixSum_phi", &m_amon_PixSum_phi);
 
 
   m_tree->Branch("mono_p", &m_mono_p, "mono_p/D");

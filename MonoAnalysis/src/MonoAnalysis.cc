@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoAnalysis.cc,v 1.7 2012/12/05 17:39:40 cowden Exp $
+// $Id: MonoAnalysis.cc,v 1.8 2013/02/08 15:42:00 cowden Exp $
 //
 //
 
@@ -193,6 +193,7 @@ class MonoAnalysis : public edm::EDAnalyzer {
     std::vector<double> m_clust_tagged;
     std::vector<double> m_clust_matchPID;
     std::vector<double> m_clust_matchTime;
+    std::vector<double> m_clust_matchPt;
     std::vector<double> m_clust_hsE;
     std::vector<double> m_clust_hsTime;
     std::vector<int>    m_clust_hsInSeed;
@@ -422,6 +423,7 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       m_clust_tagged.push_back(tagger.tagResult()[i]);
       m_clust_matchPID.push_back(tagger.matchPID()[i]);
       m_clust_matchTime.push_back(tagger.matchTime()[i]);
+      m_clust_matchPt.push_back(tagger.matchPt()[i]);
     }
 
     m_clust_E.push_back( cluster.clusterEnergy() );
@@ -749,6 +751,7 @@ MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
   m_tree->Branch("clust_thirdFrac",&m_clust_thirdFrac);
   m_tree->Branch("clust_matchDR",&m_clust_matchDR);
   m_tree->Branch("clust_matchTime",&m_clust_matchTime);
+  m_tree->Branch("clust_matchPt",&m_clust_matchPt);
   m_tree->Branch("clust_matchPID",&m_clust_matchPID);
   m_tree->Branch("clust_tagged",&m_clust_tagged);
   m_tree->Branch("clust_hsE",&m_clust_hsE);
@@ -855,6 +858,7 @@ void MonoAnalysis::clear()
     m_clust_thirdFrac.clear();
     m_clust_matchDR.clear();
     m_clust_matchTime.clear();
+    m_clust_matchPt.clear();
     m_clust_matchPID.clear();
     m_clust_tagged.clear();
     m_clust_hsE.clear();
