@@ -512,14 +512,14 @@ public:
     :m_seedLength(ps.getParameter<unsigned>("StripSeedLength") )
     ,m_clustLength(ps.getParameter<unsigned>("ClusterLength") )
     ,m_threshold(ps.getParameter<double>("SeedThreshold") )
-    ,m_calibName(ps.getParameter<std::string>("EnergyCalibrationName") )
-    ,m_tCalibName(ps.getParameter<std::string>("TimeCalibrationName") )
+    //,m_calibName(ps.getParameter<std::string>("EnergyCalibrationName") )
+    //,m_tCalibName(ps.getParameter<std::string>("TimeCalibrationName") )
     ,m_wsSize(50U)
     {
       m_seedFinder = StripSeedFinder(m_seedLength,m_clustLength,m_threshold,m_ecalMap.nCells());
       m_seedFinder.initialize();
      
-      loadHMatTables(); 
+      //loadHMatTables(); 
 
       m_workspace.resize(m_wsSize);
 

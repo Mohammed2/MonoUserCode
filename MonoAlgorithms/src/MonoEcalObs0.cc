@@ -576,7 +576,7 @@ double MonoEcalObs0::calculate(const edm::EventSetup &es, const edm::Event &ev
   m_clusterBuilder.buildClusters(m_seedFinder.nSeeds(),m_seedFinder.seeds(),m_ecalMap);
 
   // cycle over found clusters in event
-  const unsigned nClusters = m_clusterBuilder.nClusters();
+  /*const unsigned nClusters = m_clusterBuilder.nClusters();
   betas->resize( nClusters );
   const MonoEcalCluster * clusters = m_clusterBuilder.clusters();
   for ( unsigned c=0; c != nClusters; c++ ) {
@@ -629,7 +629,7 @@ double MonoEcalObs0::calculate(const edm::EventSetup &es, const edm::Event &ev
     }
 
     
-  }
+  }*/
 
 
   return 0.;
