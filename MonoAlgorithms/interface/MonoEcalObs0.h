@@ -363,6 +363,7 @@ public:
       m_tagged.resize(50U);
       m_dR.resize(50U);
       m_matchTime.resize(50U);
+      m_matchPt.resize(50U);
       m_monoMatch.resize(50U);
     }
 
@@ -387,6 +388,7 @@ public:
     m_monoEta.push_back(m_extrap.etaVr(s_EcalR));
     m_monoPhi.push_back(m_extrap.phi());
     m_monoTime.push_back(m_extrap.tVr(s_EcalR));
+    m_monoPt.push_back(part.momentum().perp());
   } 
 
   // clear member data
@@ -402,6 +404,7 @@ public:
     for ( unsigned i=0; i != vecSize; i++ ) {
       m_dR[i] = 0.;
       m_matchTime[i] = 0.;
+      m_matchPt[i] = 0.;
       m_tagged[i] = 0;
       m_monoMatch[i] = 0;
     }
@@ -412,6 +415,7 @@ public:
     m_monoEta.clear();
     m_monoPhi.clear();
     m_monoTime.clear();
+    m_monoPt.clear();
     m_monoPID.clear();
   }
 
@@ -423,6 +427,9 @@ public:
 
   // time estimate of monopole arrival
   inline const double * matchTime() const { return &m_matchTime[0]; }
+
+  // pt (at gen level) of monopole
+  inline const double * matchPt() const { return &m_matchPt[0]; }
 
   //  PID of closest match monopole (a check for monopole or anti-monopole)
   inline const int * matchPID() const { return &m_monoMatch[0]; } 
@@ -437,12 +444,14 @@ private:
 
   std::vector<double> m_dR;
   std::vector<double> m_matchTime; // time estimate of monopole arrival
+  std::vector<double> m_matchPt;
   std::vector<int>    m_monoMatch;  // PID to distinguish monopole from anti-monopole
   std::vector<int>   m_tagged;
 
   std::vector<double> m_monoEta;
   std::vector<double> m_monoPhi;
   std::vector<double> m_monoTime;
+  std::vector<double> m_monoPt;
   std::vector<int> m_monoPID;
 
   static constexpr double s_EcalR = 1.29;

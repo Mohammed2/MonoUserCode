@@ -494,6 +494,7 @@ void GenMonoClusterTagger::initialize( const edm::Event &ev, const edm::EventSet
     m_extrap.setMonopole(*mono);
     m_monoEta.push_back( m_extrap.etaVr(s_EcalR) );
     m_monoTime.push_back( m_extrap.tVr(s_EcalR) );
+    m_monoPt.push_back( mono->momentum().perp() );
     m_monoPhi.push_back( m_extrap.phi() );
     m_monoPID.push_back( mono->pdg_id() );
   } 
@@ -502,6 +503,7 @@ void GenMonoClusterTagger::initialize( const edm::Event &ev, const edm::EventSet
     m_extrap.setMonopole(*anti);
     m_monoEta.push_back( m_extrap.etaVr(s_EcalR) );
     m_monoTime.push_back( m_extrap.tVr(s_EcalR) );
+    m_monoPt.push_back( anti->momentum().perp() );
     m_monoPhi.push_back( m_extrap.phi() );
     m_monoPID.push_back( anti->pdg_id() );
   }
@@ -518,12 +520,14 @@ void GenMonoClusterTagger::tag(const unsigned nClusters, const MonoEcalCluster *
     m_tagged.resize(nClusters);
     m_dR.resize(nClusters);
     m_matchTime.resize(nClusters);
+    m_matchPt.resize(nClusters);
     m_monoMatch.resize(nClusters);
   }
 
   for ( unsigned c=0; c != nClusters; c++ ) {
     double minDR = DBL_MAX;
     double minTime = DBL_MAX;
+    double minPt = DBL_MAX;
     int minPID = 0;
     const MonoEcalCluster & cluster = clusters[c];
     const unsigned iEta = cluster.ieta();
@@ -535,11 +539,13 @@ void GenMonoClusterTagger::tag(const unsigned nClusters, const MonoEcalCluster *
       if ( dR < minDR ) {
 	minDR = dR;
   	minTime = m_monoTime[m];
+	minPt = m_monoPt[m];
 	minPID = m_monoPID[m];
       }
     }
     m_dR[c] = minDR;
     m_matchTime[c] = minTime;
+    m_matchPt[c] = minPt;
     m_monoMatch[c] = minPID;
     const bool tagged = minDR < m_dRcut;
     m_tagged[c] = tagged;
