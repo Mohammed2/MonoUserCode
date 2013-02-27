@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// Package:    MonoAnalysis
-// Class:      MonoAnalysis
+// Package:    MonoNtupleDumper
+// Class:      MonoNtupleDumper
 // 
-/**\class MonoAnalysis MonoAnalysis.cc Monopoles/MonoAnalysis/src/MonoAnalysis.cc
+/**\class MonoNtupleDumper MonoNtupleDumper.cc Monopoles/MonoNtupleDumper/src/MonoNtupleDumper.cc
 
  Description: [one line class summary]
 
@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoAnalysis.cc,v 1.9 2013/02/27 20:27:36 cowden Exp $
+// $Id: MonoNtupleDumper.cc,v 1.9 2013/02/27 20:27:36 cowden Exp $
 //
 //
 
@@ -61,7 +61,6 @@
 // Monopole analysis includes
 #include "Monopoles/MonoAlgorithms/interface/NPVHelper.h"
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalObs0.h"
-#include "Monopoles/MonoAlgorithms/interface/EnergyFlowFunctor.h"
 #include "Monopoles/MonoAlgorithms/interface/ClustCategorizer.h"
 
 
@@ -77,17 +76,14 @@
 // class declaration
 //
 
-class MonoAnalysis : public edm::EDAnalyzer {
+class MonoNtupleDumper : public edm::EDAnalyzer {
 
-   typedef std::vector<reco::Photon> PhotonCollection;
-   //typedef std::vector<reco::Electron> ElectronCollection;
-   typedef std::vector<reco::GsfElectron> ElectronCollection;
    typedef std::vector<reco::BasicCluster> BasicClusterCollection;
 
 
    public:
-      explicit MonoAnalysis(const edm::ParameterSet&);
-      ~MonoAnalysis();
+      explicit MonoNtupleDumper(const edm::ParameterSet&);
+      ~MonoNtupleDumper();
 
       static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
@@ -105,12 +101,6 @@ class MonoAnalysis : public edm::EDAnalyzer {
     // clear tree variables
     void clear();
 
-    // fill delta R maps 
-    template <class S, class T>
-    void fillDRMap( const S &, const T &, std::vector<double> *);
-
-
-
 
       // ----------member data ---------------------------
 
@@ -123,26 +113,20 @@ class MonoAnalysis : public edm::EDAnalyzer {
 
     // Monopole Ecal Observables
     Mono::MonoEcalObs0 m_ecalObs;
-    //Mono::MonoEcalObs0Calibrator m_ecalCalib;
 
 
     // TFileService
     edm::Service<TFileService> m_fs;
 
-    TF2 * m_func;
-    double m_fitParams[5];
-    double m_fitLimits[4][2];
-
-    Mono::EnergyFlowFunctor m_functor;
-
-    // directory for cluster map histograms
-    TFileDirectory *m_histDir;
     // map cluster category (lengthxwidth thing) to a histogram
     // showing the average energy or time  in each cell
     TFileDirectory *m_avgDir;
     std::map<Mono::ClustCategorizer,TH2D *> m_clustEMap;
     std::map<Mono::ClustCategorizer,TH2D *> m_clustTMap;
     std::map<Mono::ClustCategorizer,unsigned> m_clustCatCount;
+
+    std::vector<double> m_betas;
+    std::vector<double> m_betaTs;
 
     TTree * m_tree;
 
@@ -153,23 +137,7 @@ class MonoAnalysis : public edm::EDAnalyzer {
 
     unsigned m_NPV;
 
-    // observables
-    std::vector<double> m_betas;
-    std::vector<double> m_betaTs;
-
     // Ecal Observable information
-    unsigned m_nSeeds;
-    std::vector<double> m_seed_E;
-    std::vector<double> m_seed_eta;
-    std::vector<double> m_seed_phi;
-    std::vector<double> m_seed_ieta;
-    std::vector<double> m_seed_iphi;
-    std::vector<double> m_seed_L;
-    std::vector<double> m_seed_cell_E;
-    std::vector<double> m_seed_cell_time;
-    std::vector<std::vector<double> > m_seed_cell_eDist;
-    std::vector<std::vector<double> > m_seed_cell_tDist;
-
     unsigned m_nClusters;
     std::vector<double> m_clust_E;
     std::vector<double> m_clust_eta;
@@ -181,9 +149,6 @@ class MonoAnalysis : public edm::EDAnalyzer {
     std::vector<double> m_clust_sigPhi;
     std::vector<double> m_clust_meanEta;
     std::vector<double> m_clust_meanPhi;
-    std::vector<double> m_clust_chi2;
-    std::vector<double> m_clust_NDF;
-    std::vector<double> m_clust_diff;
     std::vector<double> m_clust_skewEta;
     std::vector<double> m_clust_skewPhi;
     std::vector<double> m_clust_seedFrac;
@@ -223,40 +188,6 @@ class MonoAnalysis : public edm::EDAnalyzer {
     std::vector<double> m_egClust_matchPID;
 
 
-    // Jet information
-    unsigned m_jet_N;
-    std::vector<double> m_jet_E;
-    std::vector<double> m_jet_p;
-    std::vector<double> m_jet_pt;
-    std::vector<double> m_jet_px;
-    std::vector<double> m_jet_py;
-    std::vector<double> m_jet_pz;
-    std::vector<double> m_jet_eta;
-    std::vector<double> m_jet_phi;
-
-
-    // Photon information
-    unsigned m_pho_N;
-    std::vector<double> m_pho_E;
-    std::vector<double> m_pho_p;
-    std::vector<double> m_pho_pt;
-    std::vector<double> m_pho_px;
-    std::vector<double> m_pho_py;
-    std::vector<double> m_pho_pz;
-    std::vector<double> m_pho_eta;
-    std::vector<double> m_pho_phi;
-
-    // Electron information
-    unsigned m_ele_N;
-    std::vector<double> m_ele_E;
-    std::vector<double> m_ele_p;
-    std::vector<double> m_ele_pt;
-    std::vector<double> m_ele_px;
-    std::vector<double> m_ele_py;
-    std::vector<double> m_ele_pz;
-    std::vector<double> m_ele_eta;
-    std::vector<double> m_ele_phi;
-
     // Ecal RecHits
     std::vector<double> m_ehit_eta;
     std::vector<double> m_ehit_phi;
@@ -287,55 +218,20 @@ class MonoAnalysis : public edm::EDAnalyzer {
 //
 // constructors and destructor
 //
-MonoAnalysis::MonoAnalysis(const edm::ParameterSet& iConfig)
+MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
   :m_TagEcalEB_RecHits(iConfig.getParameter<edm::InputTag>("EcalEBRecHits") )
-  ,m_Tag_Jets(iConfig.getParameter<edm::InputTag>("JetTag") )
-  ,m_Tag_Photons(iConfig.getParameter<edm::InputTag>("PhotonTag") )
-  ,m_Tag_Electrons(iConfig.getParameter<edm::InputTag>("ElectronTag") )
   ,m_isData(iConfig.getParameter<bool>("isData") )
   ,m_ecalObs(iConfig)
-  //,m_ecalCalib(iConfig)
 {
    //now do what ever initialization is needed
-   m_seed_cell_eDist.resize(10);
-   m_seed_cell_tDist.resize(10);
-
-   m_func = new TF2("myFunc","[0]*exp(-([1]-x)^2/[2]^2/2-([3]-y)^2/[4]^2/2)",-10,10,-10,10);
-   m_func->SetParName(0,"N");
-   m_func->SetParName(1,"Mean X");
-   m_func->SetParName(2,"Sigma X");
-   m_func->SetParName(3,"Mean Y");
-   m_func->SetParName(4,"Sigma Y");
-
-   m_fitParams[0] = 1.;
-   m_fitParams[1] = 0.;
-   m_fitParams[2] = 1.;
-   m_fitParams[3] = 0.;
-   m_fitParams[4] = 1.;  
-
-   m_fitLimits[0][0] = -2.;
-   m_fitLimits[0][1] = 2.;
-   m_fitLimits[1][0] = 0.;
-   m_fitLimits[1][1] = 6.;
-   m_fitLimits[2][0] = -2.;
-   m_fitLimits[2][1] = 2.;
-   m_fitLimits[3][0] = 0.;
-   m_fitLimits[3][1] = 6.;
-
-
-   double pars[3] = {1.0,0.4,0.4};
-   m_functor.setParameters(3,pars);  
-
 }
 
 
-MonoAnalysis::~MonoAnalysis()
+MonoNtupleDumper::~MonoNtupleDumper()
 {
  
    // do anything here that needs to be done at desctruction time
    // (e.g. close files, deallocate resources etc.)
-
-   delete m_func;
 }
 
 
@@ -345,7 +241,7 @@ MonoAnalysis::~MonoAnalysis()
 
 // ------------ method called for each event  ------------
 void
-MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
    using namespace edm;
 
@@ -355,71 +251,44 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   m_lumi = iEvent.id().luminosityBlock();
   m_event = iEvent.id().event();
 
+  /////////////////////////////////////
   // get NPV for this event
   m_NPV = Mono::getNPV(iEvent,iSetup);
 
-  // execute calibration for event
-  //m_ecalCalib.calculateMijn(iSetup,iEvent);
 
   // execute observable calculations
   double monoObs = m_ecalObs.calculate(iSetup,iEvent,&m_betas,&m_betaTs);
-  const Mono::StripSeedFinder & sFinder = m_ecalObs.finder();
   const Mono::EBmap & ebMap = m_ecalObs.ecalMap();
 
-  //const unsigned seedLength = sFinder.seedLength();
+  // limits in eta and phi of ebmap
   const unsigned nEta = ebMap.nEta();
   const unsigned nPhi = ebMap.nPhi();
-  m_nSeeds = sFinder.nSeeds();
-  for ( unsigned i=0; i != m_nSeeds; i++ ) {
-    const unsigned seedLength = sFinder.seeds()[i].seedLength();
-    m_seed_L.push_back( seedLength );
-    m_seed_E.push_back( sFinder.seeds()[i].energy() );
-
-    const unsigned iphi = sFinder.seeds()[i].iphi();
-    const unsigned ieta = sFinder.seeds()[i].ieta();
-    m_seed_ieta.push_back( ieta );
-    m_seed_iphi.push_back( iphi );
-
-    m_seed_eta.push_back( ebMap.eta(ieta) );
-    m_seed_phi.push_back( ebMap.phi(iphi) );
-
-    char histName[50];
-    sprintf(histName,"seedHist_%d_%d",iEvent.id().event(),i);
-    TH1D *hist = m_histDir->make<TH1D>(histName,histName,seedLength,0,seedLength);
-    sprintf(histName,"seedTHist_%d_%d",iEvent.id().event(),i);
-    TH1D *Thist = m_histDir->make<TH1D>(histName,histName,seedLength,0,seedLength);
-
-    for (unsigned c=0; c != seedLength; c++ ) {
-      //const unsigned loc = (iphi+c)*nEta+ieta;  // cross-check
-      const unsigned loc = iphi*nEta+ieta+c;
-      m_seed_cell_E.push_back( ebMap[loc] );
-      m_seed_cell_time.push_back( ebMap.time(loc) );
-      m_seed_cell_eDist[c].push_back( ebMap[loc] );
-      m_seed_cell_tDist[c].push_back( ebMap.time(loc) );
-      hist->SetBinContent(c+1,ebMap[loc]);
-      Thist->SetBinContent(c+1,ebMap.time(loc));
-    }
-  }
-
 
   /////////////////////////////////////
   // cluster analysis
+  // retrieve the clusterBuilder from the ecal obs.
   const Mono::ClusterBuilder clusterBuilder = m_ecalObs.clusterBuilder();
   m_nClusters = clusterBuilder.nClusters();
 
+  // tag clusters to gen level monopole extrapolation
   Mono::GenMonoClusterTagger tagger(0.3);
   if ( !m_isData ) {
     tagger.initialize(iEvent,iSetup);
     if ( m_nClusters ) tagger.tag(m_nClusters,clusterBuilder.clusters(),ebMap);
   }
 
+
+  // cycle of all clusters found
   for ( unsigned i=0; i != m_nClusters; i++ ) {
     const Mono::MonoEcalCluster & cluster = clusterBuilder.clusters()[i];
+
+    // get basic cluster info
     const unsigned width = cluster.clusterWidth();
     const unsigned length = cluster.clusterLength();
     const unsigned cEta = cluster.ieta();
     const unsigned cPhi = cluster.iphi();
 
+    // get MC monopole tag info
     if ( !m_isData ) {
       m_clust_matchDR.push_back(tagger.matchDR()[i]);
       m_clust_tagged.push_back(tagger.tagResult()[i]);
@@ -435,19 +304,14 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     m_clust_W.push_back( width );
 
 
+    // prepare 2D histograms to facilitate some basic analysis on the clusters
+    // like skewness
     const unsigned wings = width/2U;
     char histName[50];
     sprintf(histName,"clustHist_%d_%d",iEvent.id().event(),i);
-    TH2D *hist = m_histDir->make<TH2D>(histName,histName,length,-(float)length/2.,(float)length/2.,width,-(int)wings,wings);
+    TH2D hist(histName,histName,length,-(float)length/2.,(float)length/2.,width,-(int)wings,wings);
     sprintf(histName,"clustTHist_%d_%d",iEvent.id().event(),i);
-    TH2D *Thist = m_histDir->make<TH2D>(histName,histName,length,0,length,width,-(int)wings,wings);
-
-    hist->GetXaxis()->SetTitle("#eta bin"); 
-    hist->GetYaxis()->SetTitle("#phi bin"); 
-    hist->GetZaxis()->SetTitle("energy"); 
-    Thist->GetXaxis()->SetTitle("#eta bin"); 
-    Thist->GetYaxis()->SetTitle("#phi bin"); 
-    Thist->GetZaxis()->SetTitle("time"); 
+    TH2D Thist(histName,histName,length,0,length,width,-(int)wings,wings);
 
     double histMax=0.;
     double hsTime=-1.;
@@ -470,18 +334,18 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
        	  kWeird = cluster.getRecHit(k,ji,ebMap)->checkFlag( EcalRecHit::kWeird );
        	  kDiWeird = cluster.getRecHit(k,ji,ebMap)->checkFlag( EcalRecHit::kDiWeird );
 	}
-	hist->SetBinContent(k+1,j+1,energy);
-	Thist->SetBinContent(k+1,j+1,cluster.time(k,ji,ebMap));
+	hist.SetBinContent(k+1,j+1,energy);
+	Thist.SetBinContent(k+1,j+1,cluster.time(k,ji,ebMap));
 	if ( !excessive ) m_clust_Ecells[i*WS+j*length+k] = cluster.energy(k,ji,ebMap);
 	if ( !excessive ) m_clust_Tcells[i*WS+j*length+k] = cluster.time(k,ji,ebMap);
       }
     }
 
 
-    m_clust_sigEta.push_back( hist->GetRMS(1) );
-    m_clust_sigPhi.push_back( hist->GetRMS(2) );
-    m_clust_skewEta.push_back( hist->GetSkewness(1) );
-    m_clust_skewPhi.push_back( hist->GetSkewness(2) );
+    m_clust_sigEta.push_back( hist.GetRMS(1) );
+    m_clust_sigPhi.push_back( hist.GetRMS(2) );
+    m_clust_skewEta.push_back( hist.GetSkewness(1) );
+    m_clust_skewPhi.push_back( hist.GetSkewness(2) );
 
     const double clustE = cluster.clusterEnergy();
     m_clust_seedFrac.push_back( cluster.clusterSeed().energy()/clustE );
@@ -496,24 +360,9 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     m_clust_hsWeird.push_back( kWeird );
     m_clust_hsDiWeird.push_back( kDiWeird );
 
-    char text[50];
-    sprintf(text,"Cluster Energy beta=%.4f",m_betas[i]);
-    hist->SetTitle(text); 
     // perform Gaussian fit to cluster
     // normalise to total energy of cluster
-    hist->Scale( 1./cluster.clusterEnergy() );
-    m_func->SetParameters(m_fitParams);
-    for ( unsigned j=0; j != 4; j++ )
-      m_func->SetParLimits(j+1,m_fitLimits[j][0],m_fitLimits[j][1]);
-    //hist->Fit("myFunc","QB");
-    //const TF1 * theFit = hist->GetFunction("myFunc");
-    //m_clust_N.push_back( theFit->GetParameter(0) );
-    //m_clust_meanEta.push_back( theFit->GetParameter(1) );
-    //m_clust_sigEta.push_back( theFit->GetParameter(2) );
-    //m_clust_meanPhi.push_back( theFit->GetParameter(3) );
-    //m_clust_sigPhi.push_back( theFit->GetParameter(4) );
-    //m_clust_chi2.push_back( theFit->GetChisquare() ); 
-    //m_clust_NDF.push_back( theFit->GetNDF() ); 
+    hist.Scale( 1./cluster.clusterEnergy() );
 
 
     // fill in aggregate cluster information maps
@@ -540,10 +389,10 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     assert( avgEnMap );
     assert( avgTmMap );
 
-    for ( int binx = 1; binx <= hist->GetNbinsX(); binx++ ) {
-      for ( int biny = 1; biny <= hist->GetNbinsY(); biny++ ) {
-      	avgEnMap->SetBinContent(binx,biny,avgEnMap->GetBinContent(binx,biny)+hist->GetBinContent(binx,biny));
-      	avgTmMap->SetBinContent(binx,biny,avgTmMap->GetBinContent(binx,biny)+Thist->GetBinContent(binx,biny));
+    for ( int binx = 1; binx <= hist.GetNbinsX(); binx++ ) {
+      for ( int biny = 1; biny <= hist.GetNbinsY(); biny++ ) {
+      	avgEnMap->SetBinContent(binx,biny,avgEnMap->GetBinContent(binx,biny)+hist.GetBinContent(binx,biny));
+      	avgTmMap->SetBinContent(binx,biny,avgTmMap->GetBinContent(binx,biny)+Thist.GetBinContent(binx,biny));
       }
     }
     
@@ -576,72 +425,6 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 
 
-  // get jet collection
-  Handle<reco::PFJetCollection> jets;
-  iEvent.getByLabel(m_Tag_Jets,jets);
-  
-
-  // fill jet branches
-  reco::PFJetCollection::const_iterator itJet = jets->begin();
-  for ( ; itJet != jets->end(); itJet++ ) {
-
-    m_jet_E.push_back( (*itJet).energy() );
-    m_jet_p.push_back( (*itJet).p() );
-    m_jet_pt.push_back( (*itJet).pt() );
-    m_jet_px.push_back( (*itJet).px() );
-    m_jet_py.push_back( (*itJet).py() );
-    m_jet_pz.push_back( (*itJet).pz() );
-    m_jet_eta.push_back( (*itJet).eta() );
-    m_jet_phi.push_back( (*itJet).phi() );
-
-    m_jet_N++;
-
-  }
-
-
-
-
-  // get photon collection
-  Handle<PhotonCollection> photons;
-  iEvent.getByLabel(m_Tag_Photons,photons);
-
-  // fill photon branches
-  PhotonCollection::const_iterator itPho = photons->begin();
-  for ( ; itPho != photons->end(); itPho++ ) {
-
-    m_pho_E.push_back( (*itPho).energy() );
-    m_pho_p.push_back( (*itPho).p() );
-    m_pho_pt.push_back( (*itPho).pt() );
-    m_pho_px.push_back( (*itPho).px() );
-    m_pho_py.push_back( (*itPho).py() );
-    m_pho_pz.push_back( (*itPho).pz() );
-    m_pho_eta.push_back( (*itPho).eta() );
-    m_pho_phi.push_back( (*itPho).phi() );
-
-    m_pho_N++;
-
-  }
-
-  // get electron collection
-  Handle<ElectronCollection> electrons;
-  iEvent.getByLabel(m_Tag_Electrons,electrons);
-
-  // fill electron branches
-  ElectronCollection::const_iterator itEle = electrons->begin();
-  for ( ; itEle != electrons->end(); itEle++ ) {
-
-    m_ele_E.push_back( (*itEle).energy() );
-    m_ele_p.push_back( (*itEle).p() );
-    m_ele_pt.push_back( (*itEle).pt() );
-    m_ele_px.push_back( (*itEle).px() );
-    m_ele_py.push_back( (*itEle).py() );
-    m_ele_pz.push_back( (*itEle).pz() );
-    m_ele_eta.push_back( (*itEle).eta() );
-    m_ele_phi.push_back( (*itEle).phi() );
-
-    m_ele_N++;
-
-  }
 
 
 
@@ -676,9 +459,6 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     m_ehit_kDiWeird.push_back( (*itHit).checkFlag(EcalRecHit::kDiWeird) );
     m_ehit_flag.push_back( (*itHit).recoFlag() );
 
-    fillDRMap(cell->getPosition(),photons,&dRPhotons);
-    fillDRMap(cell->getPosition(),jets,&dRJets);
-
     m_ehit_jetIso.push_back( dRJets.size() > 0 ? dRJets[0] : -1. );
     m_ehit_phoIso.push_back( dRPhotons.size() > 0 ? dRPhotons[0] : -1. );
 
@@ -694,22 +474,21 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 // ------------ method called once each job just before starting event loop  ------------
 void 
-MonoAnalysis::beginJob()
+MonoNtupleDumper::beginJob()
 {
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
 void 
-MonoAnalysis::endJob() 
+MonoNtupleDumper::endJob() 
 {
 }
 
 // ------------ method called when starting to processes a run  ------------
 void 
-MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
+MonoNtupleDumper::beginRun(edm::Run const&, edm::EventSetup const&)
 {
 
-  m_histDir = new TFileDirectory( m_fs->mkdir("clusterMaps"));
   m_avgDir = new TFileDirectory( m_fs->mkdir("avgClusterMaps"));
 
   m_tree = m_fs->make<TTree>("tree","tree");
@@ -720,26 +499,6 @@ MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
 
   m_tree->Branch("NPV",&m_NPV,"NPV/i");
 
-  m_tree->Branch("betas_E",&m_betas);
-
-  m_tree->Branch("seed_N",&m_nSeeds,"seed_N/i");
-  m_tree->Branch("seed_E",&m_seed_E);
-  m_tree->Branch("seed_eta",&m_seed_eta);
-  m_tree->Branch("seed_phi",&m_seed_phi);
-  m_tree->Branch("seed_ieta",&m_seed_ieta);
-  m_tree->Branch("seed_iphi",&m_seed_iphi);
-  m_tree->Branch("seed_L",&m_seed_L);
-  m_tree->Branch("seedCell_E",&m_seed_cell_E);
-  m_tree->Branch("seedCell_time",&m_seed_cell_time);
-  
-  const unsigned nCells = m_seed_cell_eDist.size();
-  char name[50];
-  for ( unsigned i=0; i != nCells; i++ ) {
-    sprintf(name,"seedCell_E_%d",i);
-    m_tree->Branch(name,&m_seed_cell_eDist[i]);
-    sprintf(name,"seedCell_time_%d",i);
-    m_tree->Branch(name,&m_seed_cell_tDist[i]);
-  }
 
   m_tree->Branch("clust_N",&m_nClusters,"clust_N/i");
   m_tree->Branch("clust_E",&m_clust_E);
@@ -777,37 +536,6 @@ MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
   m_tree->Branch("egClust_matchPID",&m_egClust_matchPID);
   m_tree->Branch("egClust_tagged",&m_egClust_tagged);
 
-  m_tree->Branch("jet_N",&m_jet_N,"jet_N/i");
-  m_tree->Branch("jet_E",&m_jet_E);
-  m_tree->Branch("jet_p",&m_jet_p);
-  m_tree->Branch("jet_pt",&m_jet_pt);
-  m_tree->Branch("jet_px",&m_jet_px);
-  m_tree->Branch("jet_py",&m_jet_py);
-  m_tree->Branch("jet_pz",&m_jet_pz);
-  m_tree->Branch("jet_eta",&m_jet_eta);
-  m_tree->Branch("jet_phi",&m_jet_phi);
-
-
-  m_tree->Branch("pho_N",&m_pho_N,"pho_N/i");
-  m_tree->Branch("pho_E",&m_pho_E);
-  m_tree->Branch("pho_p",&m_pho_p);
-  m_tree->Branch("pho_pt",&m_pho_pt);
-  m_tree->Branch("pho_px",&m_pho_px);
-  m_tree->Branch("pho_py",&m_pho_py);
-  m_tree->Branch("pho_pz",&m_pho_pz);
-  m_tree->Branch("pho_eta",&m_pho_eta);
-  m_tree->Branch("pho_phi",&m_pho_phi);
-
-  m_tree->Branch("ele_N",&m_ele_N,"ele_N/i");
-  m_tree->Branch("ele_E",&m_ele_E);
-  m_tree->Branch("ele_p",&m_ele_p);
-  m_tree->Branch("ele_pt",&m_ele_pt);
-  m_tree->Branch("ele_px",&m_ele_px);
-  m_tree->Branch("ele_py",&m_ele_py);
-  m_tree->Branch("ele_pz",&m_ele_pz);
-  m_tree->Branch("ele_eta",&m_ele_eta);
-  m_tree->Branch("ele_phi",&m_ele_phi);
-
   m_tree->Branch("ehit_eta",&m_ehit_eta);
   m_tree->Branch("ehit_phi",&m_ehit_phi);
   m_tree->Branch("ehit_time",&m_ehit_time);
@@ -821,7 +549,7 @@ MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
 
 
 
-void MonoAnalysis::clear()
+void MonoNtupleDumper::clear()
 { 
 
 
@@ -830,25 +558,6 @@ void MonoAnalysis::clear()
      m_event = 0;
   
     m_NPV = 0;
-
-    m_betas.clear();
-
-    // obs information
-    m_nSeeds = 0;
-    m_seed_E.clear();
-    m_seed_eta.clear();
-    m_seed_phi.clear();
-    m_seed_ieta.clear();
-    m_seed_iphi.clear();
-    m_seed_L.clear();
-    m_seed_cell_E.clear();
-    m_seed_cell_time.clear();
-   
-    const unsigned nCells = m_seed_cell_eDist.size();
-    for ( unsigned i=0; i != nCells; i++ ) {
-      m_seed_cell_eDist[i].clear();
-      m_seed_cell_tDist[i].clear();
-    }
 
     m_nClusters = 0;
     m_clust_E.clear();
@@ -890,40 +599,6 @@ void MonoAnalysis::clear()
     m_egClust_tagged.clear();
 
 
-    // Jet information
-    m_jet_N = 0;
-    m_jet_E.clear();
-    m_jet_p.clear();
-    m_jet_pt.clear();
-    m_jet_px.clear();
-    m_jet_py.clear();
-    m_jet_pz.clear();
-    m_jet_eta.clear();
-    m_jet_phi.clear();
-
-
-    // Photon information
-    m_pho_N = 0;
-    m_pho_E.clear();
-    m_pho_p.clear();
-    m_pho_pt.clear();
-    m_pho_px.clear();
-    m_pho_py.clear();
-    m_pho_pz.clear();
-    m_pho_eta.clear();
-    m_pho_phi.clear();
-
-    // Electron information
-    m_ele_N = 0;
-    m_ele_E.clear();
-    m_ele_p.clear();
-    m_ele_pt.clear();
-    m_ele_px.clear();
-    m_ele_py.clear();
-    m_ele_pz.clear();
-    m_ele_eta.clear();
-    m_ele_phi.clear();
-
     // Ecal RecHits
     m_ehit_eta.clear();
     m_ehit_phi.clear();
@@ -940,26 +615,10 @@ void MonoAnalysis::clear()
 }
 
 
-template <class S, class T>
-inline void MonoAnalysis::fillDRMap(const S &a, const T &bcoll, std::vector<double> *map )
-{
-
-  assert(map);
-
-  map->resize(bcoll->size(),0.);
-
-  for ( unsigned i=0; i != bcoll->size(); i++ ) 
-    (*map)[i] = reco::deltaR(a,bcoll->at(i));
-  
-
-  std::sort(map->begin(),map->end() ); 
-
-}
-
 
 // ------------ method called when ending the processing of a run  ------------
 void 
-MonoAnalysis::endRun(edm::Run const&, edm::EventSetup const&)
+MonoNtupleDumper::endRun(edm::Run const&, edm::EventSetup const&)
 {
   //m_ecalCalib.calculateHij();
   //m_ecalCalib.dumpCalibration();
@@ -977,19 +636,19 @@ MonoAnalysis::endRun(edm::Run const&, edm::EventSetup const&)
 
 // ------------ method called when starting to processes a luminosity block  ------------
 void 
-MonoAnalysis::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+MonoNtupleDumper::beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
 
 // ------------ method called when ending the processing of a luminosity block  ------------
 void 
-MonoAnalysis::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
+MonoNtupleDumper::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&)
 {
 }
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void
-MonoAnalysis::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
+MonoNtupleDumper::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   //The following says we do not know what parameters are allowed so do no validation
   // Please change this to state exactly what you do use, even if it is no parameters
   edm::ParameterSetDescription desc;
@@ -998,4 +657,4 @@ MonoAnalysis::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
 }
 
 //define this as a plug-in
-DEFINE_FWK_MODULE(MonoAnalysis);
+DEFINE_FWK_MODULE(MonoNtupleDumper);
