@@ -1,0 +1,12 @@
+<use   name="TrackingTools/TrackRefitter"/>
+<use   name="FWCore/Framework"/>
+<use   name="clhep"/>
+<use   name="root"/>
+<use   name="rootcore"/>
+<use name="Monopoles/TrackCombiner"/>
+<flags EDM_PLUGIN="1"/>
+<export>
+  <lib name="1"/>
+</export>
+
+
