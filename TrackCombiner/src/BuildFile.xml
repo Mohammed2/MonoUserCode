@@ -4,5 +4,7 @@
 <use name="root"/>
 <use name="rootcore"/>
 <use name="Geometry/TrackerGeometryBuilder"/>
+<export>
+   <lib name="1"/>
+</export>
 
-<flags EDM_PLUGIN="1"/>

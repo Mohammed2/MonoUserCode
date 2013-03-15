@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoNtupleDumper.cc,v 1.9 2013/02/27 20:27:36 cowden Exp $
+// $Id: MonoNtupleDumper.cc,v 1.1 2013/02/27 23:27:47 cowden Exp $
 //
 //
 
@@ -35,7 +35,6 @@
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
 
 #include "DataFormats/Math/interface/deltaR.h"
-
 
 // data formats
 #include "DataFormats/EcalRecHit/interface/EcalRecHit.h"
@@ -63,6 +62,7 @@
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalObs0.h"
 #include "Monopoles/MonoAlgorithms/interface/ClustCategorizer.h"
 
+#include "Monopoles/TrackCombiner/interface/MplTracker.h"
 
 // ROOT includes
 #include "TTree.h"
@@ -104,6 +104,9 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
 
       // ----------member data ---------------------------
 
+    std::string m_output;
+    TFile *m_outputFile;
+
     // input tags
     edm::InputTag m_TagEcalEB_RecHits;
     edm::InputTag m_Tag_Jets;
@@ -114,13 +117,15 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     // Monopole Ecal Observables
     Mono::MonoEcalObs0 m_ecalObs;
 
+    //Tracker
+    MplTracker *_Tracker;
 
     // TFileService
-    edm::Service<TFileService> m_fs;
+    //edm::Service<TFileService> m_fs;
 
     // map cluster category (lengthxwidth thing) to a histogram
     // showing the average energy or time  in each cell
-    TFileDirectory *m_avgDir;
+    //TFileDirectory *m_avgDir;
     std::map<Mono::ClustCategorizer,TH2D *> m_clustEMap;
     std::map<Mono::ClustCategorizer,TH2D *> m_clustTMap;
     std::map<Mono::ClustCategorizer,unsigned> m_clustCatCount;
@@ -222,8 +227,9 @@ MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
   :m_TagEcalEB_RecHits(iConfig.getParameter<edm::InputTag>("EcalEBRecHits") )
   ,m_isData(iConfig.getParameter<bool>("isData") )
   ,m_ecalObs(iConfig)
+  ,m_output(iConfig.getParameter<std::string>("Output"))
 {
-   //now do what ever initialization is needed
+  _Tracker = new MplTracker(iConfig);
 }
 
 
@@ -377,9 +383,9 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     if ( foundEn ) {
       char name[50];
       sprintf(name,"avgEnClust_%d_%d",cluCat.length,cluCat.width);
-      m_clustEMap[cluCat] = m_avgDir->make<TH2D>(name,name,cluCat.length,0,cluCat.length,cluCat.width,-(int)cluCat.width/2,(int)cluCat.width/2);
+      m_clustEMap[cluCat] = new TH2D(name,name,cluCat.length,0,cluCat.length,cluCat.width,-(int)cluCat.width/2,(int)cluCat.width/2);
       sprintf(name,"avgTmClust_%d_%d",cluCat.length,cluCat.width);
-      m_clustTMap[cluCat] = m_avgDir->make<TH2D>(name,name,cluCat.length,0,cluCat.length,cluCat.width,-(int)cluCat.width/2,(int)cluCat.width/2);
+      m_clustTMap[cluCat] = new TH2D(name,name,cluCat.length,0,cluCat.length,cluCat.width,-(int)cluCat.width/2,(int)cluCat.width/2);
     }
 
     m_clustCatCount[cluCat]++;
@@ -465,7 +471,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   }
 
 
-
+  _Tracker->analyze(iEvent, iSetup);
 
   m_tree->Fill();
 
@@ -476,29 +482,17 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 void 
 MonoNtupleDumper::beginJob()
 {
-}
+  m_outputFile = new TFile(m_output.c_str(), "recreate");
 
-// ------------ method called once each job just after ending the event loop  ------------
-void 
-MonoNtupleDumper::endJob() 
-{
-}
+  //m_avgDir = new TFileDirectory( m_fs->mkdir("avgClusterMaps"));
 
-// ------------ method called when starting to processes a run  ------------
-void 
-MonoNtupleDumper::beginRun(edm::Run const&, edm::EventSetup const&)
-{
-
-  m_avgDir = new TFileDirectory( m_fs->mkdir("avgClusterMaps"));
-
-  m_tree = m_fs->make<TTree>("tree","tree");
+  m_tree = new TTree("monopoles","Monopole Variables");
 
   m_tree->Branch("run",&m_run,"run/i");
   m_tree->Branch("lumiBlock",&m_lumi,"lumiBlock/i");
   m_tree->Branch("event",&m_event,"evnet/i");
 
   m_tree->Branch("NPV",&m_NPV,"NPV/i");
-
 
   m_tree->Branch("clust_N",&m_nClusters,"clust_N/i");
   m_tree->Branch("clust_E",&m_clust_E);
@@ -544,7 +538,34 @@ MonoNtupleDumper::beginRun(edm::Run const&, edm::EventSetup const&)
   m_tree->Branch("ehit_kDiWeird",&m_ehit_kDiWeird);
   m_tree->Branch("ehit_flag",&m_ehit_flag);
 
+  _Tracker->beginJob(m_tree);
+}
 
+// ------------ method called once each job just after ending the event loop  ------------
+void 
+MonoNtupleDumper::endJob() 
+{
+  m_outputFile->cd();
+  m_tree->Write();
+
+  for(std::map<Mono::ClustCategorizer,TH2D*>::iterator i = m_clustEMap.begin(); i != m_clustEMap.end(); i++)
+  {
+    i->second->Write();
+  }
+  for(std::map<Mono::ClustCategorizer,TH2D*>::iterator i = m_clustTMap.begin(); i != m_clustTMap.end(); i++)
+  {
+    i->second->Write();
+  }
+
+  _Tracker->endJob();
+
+  m_outputFile->Close();
+}
+
+// ------------ method called when starting to processes a run  ------------
+void 
+MonoNtupleDumper::beginRun(edm::Run const&, edm::EventSetup const&)
+{
 }
 
 

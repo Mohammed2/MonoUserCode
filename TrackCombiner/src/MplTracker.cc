@@ -1,12 +1,5 @@
-#include "Monopoles/TrackCombiner/interface/TrackCombinerReco.h"
+#include "Monopoles/TrackCombiner/interface/MplTracker.h"
 
-//#include "TrackingTools/TrackRefitter/interface/TrackTransformer.h"
-//#include "TrackingTools/TrackRefitter/interface/TrackTransformerForGlobalCosmicMuons.h" 
-//#include "TrackingTools/TrackRefitter/interface/TrackTransformerForCosmicMuons.h"
-
-#include "FWCore/Framework/interface/Event.h"
-#include "FWCore/Framework/interface/EventSetup.h"
-#include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 
 #include "DataFormats/TrackReco/interface/Track.h"
@@ -31,26 +24,26 @@
 
 #include "DataFormats/GeometryCommonDetAlgo/interface/ErrorFrameTransformer.h"
 
-#include <TFitResult.h>
-#include <TVirtualFitter.h>
+#include "TFitResult.h"
+#include "TVirtualFitter.h"
 
 #include <sstream>
 
 using namespace std; using namespace edm;
 
 /// Constructor
-TrackCombinerReco::TrackCombinerReco(const ParameterSet& parameterSet){
-  _Source = parameterSet.getParameter<std::string>("Source");
-  _Output = parameterSet.getParameter<std::string>("Output");
-  _PhiCut = parameterSet.getUntrackedParameter<double>("PhiCut", 0.5);
-  _Chi2Cut = parameterSet.getUntrackedParameter<double>("Chi2Cut", 5.0);
-  _PtCut = parameterSet.getUntrackedParameter<double>("PtCut", 3.0);
-  _DeDxCut = parameterSet.getUntrackedParameter<double>("DeDxCut", 5.0);
-  _DefaultError = pow(parameterSet.getUntrackedParameter<double>("DefaultError", 0.05), 2);
-  _ErrorFudge = pow(parameterSet.getUntrackedParameter<double>("ErrorFudge", 0.02), 2);
+MplTracker::MplTracker(const ParameterSet& parameterSet){
+  _Source = parameterSet.getParameter<std::string>("TrackSource");
+  //_Output = parameterSet.getParameter<std::string>("Output");
+  _PhiCut = parameterSet.getUntrackedParameter<double>("TrackPhiCut", 0.5);
+  _Chi2Cut = parameterSet.getUntrackedParameter<double>("TrackChi2Cut", 5.0);
+  _PtCut = parameterSet.getUntrackedParameter<double>("TrackPtCut", 3.0);
+  _DeDxCut = parameterSet.getUntrackedParameter<double>("TrackDeDxCut", 5.0);
+  _DefaultError = pow(parameterSet.getUntrackedParameter<double>("TrackDefaultError", 0.05), 2);
+  _ErrorFudge = pow(parameterSet.getUntrackedParameter<double>("TrackErrorFudge", 0.02), 2);
 
-  _MeVperADCPixel = parameterSet.getUntrackedParameter<double>("MeVperADCPixel", 3.61e-6);
-  _MeVperADCStrip = parameterSet.getUntrackedParameter<double>("MeVperADCStrip", 3.61e-6*265);
+  _MeVperADCPixel = parameterSet.getUntrackedParameter<double>("TrackMeVperADCPixel", 3.61e-6);
+  _MeVperADCStrip = parameterSet.getUntrackedParameter<double>("TrackMeVperADCStrip", 3.61e-6*265);
 
   _TrackHitOutput = parameterSet.getUntrackedParameter<bool>("TrackHitOutput", false);
 
@@ -60,59 +53,64 @@ TrackCombinerReco::TrackCombinerReco(const ParameterSet& parameterSet){
   _XYFunc = new TF1("XYFunc", "[0] + sqrt([2]^2 - (x-[1])^2)*TMath::Sign(1,[2]) - [2]", 0, 200);
   //_DeDxFunc = new TF1("DeDxFunc", "TMath::Landau(x,[0],[1],1)", 0, 255);
   //_DeDxFitter.setFunction(_DeDxFunc);
+
+  _FillSelf = false;
 }
  
 
 /// Destructor
-TrackCombinerReco::~TrackCombinerReco(){
+MplTracker::~MplTracker(){
 }
 
-void TrackCombinerReco::beginJob(){
-  _OutputFile = new TFile(_Output.c_str(), "recreate");
-  _Tree = new TTree("MplTrackSets", "MplTrackSets");
-  _Tree->Branch("Group", &_vGroup);
+void MplTracker::beginJob(TTree *Tree=NULL){
+  //_OutputFile = new TFile(_Output.c_str(), "recreate");
+  if(Tree) _Tree = Tree;
+  else{
+    _Tree = new TTree("MplTrackSets", "MplTrackSets");
+    _FillSelf = true;
+  }
 
-  _Tree->Branch("XYPar0", &_vXYPar0);
-  _Tree->Branch("XYPar1", &_vXYPar1);
-  _Tree->Branch("XYPar2", &_vXYPar2);
-  _Tree->Branch("XYErr0", &_vXYErr0);
-  _Tree->Branch("XYErr1", &_vXYErr1);
-  _Tree->Branch("XYErr2", &_vXYErr2);
-  _Tree->Branch("RZPar0", &_vRZPar0);
-  _Tree->Branch("RZPar1", &_vRZPar1);
-  _Tree->Branch("RZPar2", &_vRZPar2);
-  _Tree->Branch("RZErr0", &_vRZErr0);
-  _Tree->Branch("RZErr1", &_vRZErr1);
-  _Tree->Branch("RZErr2", &_vRZErr2);
+  _Tree->Branch("Track_Group", &_vGroup);
 
-  _Tree->Branch("Chi2XY", &_vChi2XY);
-  _Tree->Branch("Chi2RZ", &_vChi2RZ);
-  _Tree->Branch("NdofXY", &_vNdofXY);
-  _Tree->Branch("NdofRZ", &_vNdofRZ);
+  _Tree->Branch("Track_XYPar0", &_vXYPar0);
+  _Tree->Branch("Track_XYPar1", &_vXYPar1);
+  _Tree->Branch("Track_XYPar2", &_vXYPar2);
+  _Tree->Branch("Track_XYErr0", &_vXYErr0);
+  _Tree->Branch("Track_XYErr1", &_vXYErr1);
+  _Tree->Branch("Track_XYErr2", &_vXYErr2);
+  _Tree->Branch("Track_RZPar0", &_vRZPar0);
+  _Tree->Branch("Track_RZPar1", &_vRZPar1);
+  _Tree->Branch("Track_RZPar2", &_vRZPar2);
+  _Tree->Branch("Track_RZErr0", &_vRZErr0);
+  _Tree->Branch("Track_RZErr1", &_vRZErr1);
+  _Tree->Branch("Track_RZErr2", &_vRZErr2);
 
-  _Tree->Branch("DeDx", &_vDeDx);
-  _Tree->Branch("Iso", &_vIso);
+  _Tree->Branch("Track_Chi2XY", &_vChi2XY);
+  _Tree->Branch("Track_Chi2RZ", &_vChi2RZ);
+  _Tree->Branch("Track_Ndof", &_vNdof);
+
+  _Tree->Branch("Track_DeDx", &_vDeDx);
+  _Tree->Branch("Track_Iso", &_vIso);
 
   if(_TrackHitOutput){
-    _TrackHitTree = new TTree("TrackHits", "TrackHits");
-    _TrackHitTree->Branch("Track", &_vTHTrack);
-    _TrackHitTree->Branch("X", &_vTHX);
-    _TrackHitTree->Branch("Y", &_vTHY);
-    _TrackHitTree->Branch("Z", &_vTHZ);
-    _TrackHitTree->Branch("ErrX", &_vTHErrX);
-    _TrackHitTree->Branch("ErrY", &_vTHErrY);
-    _TrackHitTree->Branch("ErrZ", &_vTHErrZ);
+    _Tree->Branch("TrackHit_Track", &_vTHTrack);
+    _Tree->Branch("TrackHit_X", &_vTHX);
+    _Tree->Branch("TrackHit_Y", &_vTHY);
+    _Tree->Branch("TrackHit_Z", &_vTHZ);
+    _Tree->Branch("TrackHit_ErrX", &_vTHErrX);
+    _Tree->Branch("TrackHit_ErrY", &_vTHErrY);
+    _Tree->Branch("TrackHit_ErrZ", &_vTHErrZ);
   }
 }
 
-void TrackCombinerReco::endJob(){
-  _OutputFile->cd();
+void MplTracker::endJob(){
+  //_OutputFile->cd();
   _Tree->Write();
-  if(_TrackHitOutput) _TrackHitTree->Write();
-  _OutputFile->Close();
+  //if(_TrackHitOutput) _TrackHitTree->Write();
+  //_OutputFile->Close();
 }
 
-void TrackCombinerReco::Init(const edm::EventSetup& iSetup) {
+void MplTracker::Init(const edm::EventSetup& iSetup) {
   iSetup.get<GlobalTrackingGeometryRecord>().get(_TrackingGeom);
 
   // Fill Normalization map
@@ -134,14 +132,14 @@ void TrackCombinerReco::Init(const edm::EventSetup& iSetup) {
   }
 }
 
-void TrackCombinerReco::analyze(const Event& event, const EventSetup& setup){
+void MplTracker::analyze(const Event& event, const EventSetup& setup){
   if(_NormMap.size() == 0) Init(setup);
 
   event.getByLabel(_Source, _hTracks);
   //event.getByLabel(_Source, _hTrajectories);
   //event.getByLabel(_Source, _hTrajTrackAssociations);
 
-  event.getByLabel("dedxHarmonic2", _hDeDx);
+  //event.getByLabel("dedxHarmonic2", _hDeDx);
 
   _Used.clear();
   Clear();
@@ -229,11 +227,11 @@ void TrackCombinerReco::analyze(const Event& event, const EventSetup& setup){
       _Used.insert(Group[j]);
   }
 
-  _Tree->Fill();
-  if(_TrackHitOutput) _TrackHitTree->Fill();
+  if(_FillSelf) _Tree->Fill();
+  //if(_TrackHitOutput) _TrackHitTree->Fill();
 }
 
-void TrackCombinerReco::AddMoreTracks(vector<int> &Group){
+void MplTracker::AddMoreTracks(vector<int> &Group){
   edm::Ref<std::vector<reco::Track> > InitTrack(_hTracks, Group[0]);
   //edm::RefToBase<reco::Track> InitTrack ( (*_hTrajTrackAssociations.product())[InitTrajRef] );
 
@@ -269,14 +267,14 @@ void TrackCombinerReco::AddMoreTracks(vector<int> &Group){
 
     FitXY(Group);
     //cout << " Chi2XY: " << _Chi2XY / _NdofXY << endl;
-    if(_NdofXY > 0 && _Chi2XY / _NdofXY > _Chi2Cut){
+    if(_Ndof > 0 && _Chi2XY / _Ndof > _Chi2Cut){
       RemovePoints(NPoints);
       continue;
     }
 
     FitRZ();
     //cout << " Chi2RZ: " << _Chi2RZ / _NdofRZ << endl;
-    if(_NdofRZ > 0 && _Chi2RZ / _NdofRZ > _Chi2Cut){
+    if(_Ndof > 0 && _Chi2RZ / _Ndof > _Chi2Cut){
       RemovePoints(NPoints);
       continue;
     }
@@ -287,7 +285,7 @@ void TrackCombinerReco::AddMoreTracks(vector<int> &Group){
 }
 
 
-int TrackCombinerReco::AddPoints(const reco::Track &Track){
+int MplTracker::AddPoints(const reco::Track &Track){
   int NPoints = 0;
 
   for (trackingRecHit_iterator iHit=Track.recHitsBegin(); iHit!=Track.recHitsEnd(); iHit++){
@@ -366,7 +364,7 @@ int TrackCombinerReco::AddPoints(const reco::Track &Track){
   return NPoints;
 }
 
-void TrackCombinerReco::RemovePoints(int n){
+void MplTracker::RemovePoints(int n){
   for(int i=0; i<n; i++){
     _Points.pop_back();
     _Errors.pop_back();
@@ -376,7 +374,7 @@ void TrackCombinerReco::RemovePoints(int n){
   //cout << "Just Removed " << n << ".  Sizes: " << _Points.size() << " " << _Errors.size() << " " << _Charges.size() << endl;
 }
 
-void TrackCombinerReco::Clear(){
+void MplTracker::Clear(){
   _vGroup.clear();
 
   _vXYPar0.clear();
@@ -394,8 +392,7 @@ void TrackCombinerReco::Clear(){
 
   _vChi2XY.clear();
   _vChi2RZ.clear();
-  _vNdofXY.clear();
-  _vNdofRZ.clear();
+  _vNdof.clear();
 
   _vDeDx.clear();
   _vIso.clear();
@@ -409,7 +406,7 @@ void TrackCombinerReco::Clear(){
   _vTHErrZ.clear();
 }
 
-void TrackCombinerReco::Save(vector<int> &Group){
+void MplTracker::Save(vector<int> &Group){
   /*cout << "Outputting a track..." << endl << "Constituents: ";
   for(uint i=0; i<Group.size(); i++){
     cout << Group[i] << " ";
@@ -440,14 +437,13 @@ void TrackCombinerReco::Save(vector<int> &Group){
 
   _vChi2XY.push_back(_Chi2XY);
   _vChi2RZ.push_back(_Chi2RZ);
-  _vNdofXY.push_back(_NdofXY);
-  _vNdofRZ.push_back(_NdofRZ);
+  _vNdof.push_back(_Ndof);
 
   _vDeDx.push_back(_DeDx);
   _vIso.push_back(_Iso);
 }
 
-void TrackCombinerReco::FitXY(vector<int> &Group){
+void MplTracker::FitXY(vector<int> &Group){
   int NumPoints = _Points.size();
   TGraphErrors XYGraph(NumPoints);
 
@@ -493,12 +489,12 @@ void TrackCombinerReco::FitXY(vector<int> &Group){
   _XYPar[2] = Result->Parameter(2); // radius
   _XYErr[2] = Result->ParError(2);
   _Chi2XY = Result->Chi2();
-  _NdofXY = Result->Ndf();
+  _Ndof = Result->Ndf();
 
   //cout << _XYPar[0] << " " << _XYPar[1] << " " << _XYPar[2] << endl;
 }
 
-void TrackCombinerReco::FitRZ(bool Debug){ /* _RZFitter->ClearPoints();
+void MplTracker::FitRZ(bool Debug){ /* _RZFitter->ClearPoints();
 
   int NumPoints = Points.size();
 
@@ -542,11 +538,11 @@ void TrackCombinerReco::FitRZ(bool Debug){ /* _RZFitter->ClearPoints();
     _RZErr[i] = Result->ParError(i);
   }
   _Chi2RZ = Result->Chi2();
-  _NdofRZ = Result->Ndf();
+  //_NdofRZ = Result->Ndf();
 
 }
 
-void TrackCombinerReco::FitDeDx(){
+void MplTracker::FitDeDx(){
   //use the UnbinnedFit method for now.
 /*
   int NumPoints = _Charges.size();
@@ -585,7 +581,7 @@ void TrackCombinerReco::FitDeDx(){
   _DeDx = SortedCharges[SortedCharges.size()/2];
 }
 
-void TrackCombinerReco::AverageIso(vector<int> &Group){
+void MplTracker::AverageIso(vector<int> &Group){
   edm::Ref<std::vector<reco::Track> > InitTrack(_hTracks, Group[0]);
 
   float InitEta = InitTrack->eta();
