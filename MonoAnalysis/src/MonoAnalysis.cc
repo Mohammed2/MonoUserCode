@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoAnalysis.cc,v 1.9 2013/02/27 20:27:36 cowden Exp $
+// $Id: MonoAnalysis.cc,v 1.10 2013/02/27 23:27:47 cowden Exp $
 //
 //
 
@@ -209,6 +209,16 @@ class MonoAnalysis : public edm::EDAnalyzer {
     static const unsigned SS = 15*100;
     double m_clust_Ecells[1500]; 
     double m_clust_Tcells[1500]; 
+
+    // MC gen monopoles
+    double m_mono_eta;
+    double m_mono_phi;
+    double m_mono_pT;
+    double m_mono_extrapEta;
+    double m_amon_eta;
+    double m_amon_phi;
+    double m_amon_pT;
+    double m_amon_extrapEta;
 
 
 
@@ -497,7 +507,7 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     m_clust_hsDiWeird.push_back( kDiWeird );
 
     char text[50];
-    sprintf(text,"Cluster Energy beta=%.4f",m_betas[i]);
+    sprintf(text,"Cluster Energy beta=%.4f",0.);
     hist->SetTitle(text); 
     // perform Gaussian fit to cluster
     // normalise to total energy of cluster
@@ -548,6 +558,35 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
     
 
+  }
+
+
+  ////////////////////////
+  // MC truth collection
+  if ( !m_isData ) {
+    Mono::MonoTruthSnoop snoopy(iEvent,iSetup);
+    const HepMC::GenParticle *mono = snoopy.mono(Mono::monopole);
+    const HepMC::GenParticle *amon = snoopy.mono(Mono::anti_monopole);
+
+    Mono::MonoGenTrackExtrapolator extrap;
+
+    if ( mono ) {
+      m_mono_eta = mono->momentum().eta();
+      m_mono_phi = mono->momentum().phi();
+      m_mono_pT = mono->momentum().perp();
+
+      extrap.setMonopole(*mono);
+      m_mono_extrapEta = extrap.etaVr(1.29);
+    }
+
+    if ( amon ) {
+      m_amon_eta = amon->momentum().eta();
+      m_amon_phi = amon->momentum().phi();
+      m_amon_pT = amon->momentum().perp();
+
+      extrap.setMonopole(*amon);
+      m_amon_extrapEta = extrap.etaVr(1.29);
+    }
   }
 
 
@@ -768,6 +807,16 @@ MonoAnalysis::beginRun(edm::Run const&, edm::EventSetup const&)
   m_tree->Branch("clust_Ecells",&m_clust_Ecells,"clust_Ecells[1500]/D");
   m_tree->Branch("clust_Tcells",&m_clust_Tcells,"clust_Tcells[1500]/D");
 
+  m_tree->Branch("mono_eta",&m_mono_eta,"mono_eta/D");
+  m_tree->Branch("mono_phi",&m_mono_phi,"mono_phi/D");
+  m_tree->Branch("mono_pT",&m_mono_pT,"mono_pT/D");
+  m_tree->Branch("mono_extrapEta",&m_mono_extrapEta,"mono_extrapEta/D");
+  
+  m_tree->Branch("amon_eta",&m_amon_eta,"amon_eta/D");
+  m_tree->Branch("amon_phi",&m_amon_phi,"amon_phi/D");
+  m_tree->Branch("amon_pT",&m_amon_pT,"amon_pT/D");
+  m_tree->Branch("amon_extrapEta",&m_amon_extrapEta,"amon_extrapEta/D");
+
   m_tree->Branch("egClust_N",&m_nClusterEgamma,"egClust_N/i");
   m_tree->Branch("egClust_E",&m_egClust_E);
   m_tree->Branch("egClust_size",&m_egClust_size);
@@ -878,6 +927,15 @@ void MonoAnalysis::clear()
       m_clust_Ecells[i] = -999.;
       m_clust_Tcells[i] = -999.;
     }
+
+    m_mono_eta = 0.;
+    m_mono_phi = 0.;
+    m_mono_pT = 0.;
+    m_mono_extrapEta = 0.;
+    m_amon_eta = 0.;
+    m_amon_phi = 0.;
+    m_amon_pT = 0.;
+    m_amon_extrapEta = 0.;
 
 
     m_nClusterEgamma = 0;

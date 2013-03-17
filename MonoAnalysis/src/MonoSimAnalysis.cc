@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoSimAnalysis.cc,v 1.5 2012/12/05 17:39:41 cowden Exp $
+// $Id: MonoSimAnalysis.cc,v 1.6 2013/02/27 20:27:36 cowden Exp $
 //
 //
 
@@ -536,7 +536,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_mono_z = mono->momentum().z();
 
     extrap.setMonopole(*mono);
-    m_monoExp_eta = extrap.etaVr(129.);
+    m_monoExp_eta = extrap.etaVr(1.29);
     m_monoExp_phi = extrap.phi();
   }
  
@@ -553,7 +553,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_amon_z = amon->momentum().z();
 
     extrap.setMonopole(*amon);
-    m_amonExp_eta = extrap.etaVr(129.);
+    m_amonExp_eta = extrap.etaVr(1.29);
     m_amonExp_phi = extrap.phi();
   }
 
