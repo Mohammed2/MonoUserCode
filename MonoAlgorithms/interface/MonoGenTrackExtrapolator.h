@@ -3,6 +3,7 @@
 ///////////////////////////////////////////////
 //  MonoGenTrackExtrapolator
 //  A helper class to extrapolate the generator level monopole
+//  This works in MKS units (so distances are in meters).
 ///////////////////////////////////////////////
 
 #include <cmath>
