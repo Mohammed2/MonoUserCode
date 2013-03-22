@@ -616,7 +616,7 @@ void MplTracker::getTracks(std::vector<Mono::MonoTrack> &tracks) const
   tracks.resize(nTracks);
 
   for ( unsigned t=0; t != nTracks; t++ ) {
-    tracks[t] = Mono::MonoTrack(_vXYPar0[t],_vXYPar1[t],_vXYPar2[t],_vRZPar0[t],_vRZPar0[t],_vRZPar2[t]);
+    tracks[t] = Mono::MonoTrack(_vXYPar0[t],_vXYPar1[t],_vXYPar2[t],_vRZPar0[t],_vRZPar1[t],_vRZPar2[t]);
   }
 
 }
