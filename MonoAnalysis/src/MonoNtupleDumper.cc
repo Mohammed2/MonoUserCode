@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoNtupleDumper.cc,v 1.1 2013/02/27 23:27:47 cowden Exp $
+// $Id: MonoNtupleDumper.cc,v 1.2 2013/03/15 12:09:32 swilbur Exp $
 //
 //
 
@@ -61,6 +61,7 @@
 #include "Monopoles/MonoAlgorithms/interface/NPVHelper.h"
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalObs0.h"
 #include "Monopoles/MonoAlgorithms/interface/ClustCategorizer.h"
+#include "Monopoles/MonoAlgorithms/interface/MonoTrackMatcher.h"
 
 #include "Monopoles/TrackCombiner/interface/MplTracker.h"
 
@@ -472,6 +473,8 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
 
   _Tracker->analyze(iEvent, iSetup);
+  const Mono::MonoEcalCluster * clusters = clusterBuilder.clusters(); 
+  _Tracker->doMatch(m_nClusters,clusters,ebMap);
 
   m_tree->Fill();
 
