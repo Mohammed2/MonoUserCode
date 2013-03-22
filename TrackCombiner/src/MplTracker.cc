@@ -92,6 +92,9 @@ void MplTracker::beginJob(TTree *Tree=NULL){
   _Tree->Branch("Track_DeDx", &_vDeDx);
   _Tree->Branch("Track_Iso", &_vIso);
 
+  _Tree->Branch("Track_clustMatch",&_clustMatch);
+  _Tree->Branch("Track_clustDist",&_clustDist);
+
   if(_TrackHitOutput){
     _Tree->Branch("TrackHit_Track", &_vTHTrack);
     _Tree->Branch("TrackHit_X", &_vTHX);
@@ -404,6 +407,9 @@ void MplTracker::Clear(){
   _vTHErrX.clear();
   _vTHErrY.clear();
   _vTHErrZ.clear();
+
+  _clustMatch.clear();
+  _clustDist.clear();
 }
 
 void MplTracker::Save(vector<int> &Group){
@@ -601,5 +607,32 @@ void MplTracker::AverageIso(vector<int> &Group){
   }
 
   _Iso = IsoPt;
+}
+
+
+void MplTracker::getTracks(std::vector<Mono::MonoTrack> &tracks) const
+{
+  const unsigned nTracks = _vXYPar0.size();
+  tracks.resize(nTracks);
+
+  for ( unsigned t=0; t != nTracks; t++ ) {
+    tracks[t] = Mono::MonoTrack(_vXYPar0[t],_vXYPar1[t],_vXYPar2[t],_vRZPar0[t],_vRZPar0[t],_vRZPar2[t]);
+  }
+
+}
+
+
+void MplTracker::doMatch(unsigned nClusters, const Mono::MonoEcalCluster *clusters,const Mono::EBmap &ecalMap)
+{
+
+  Mono::MonoTrackMatcher matcher(50.);
+
+  std::vector<Mono::MonoTrack> tracks;
+  this->getTracks(tracks);
+
+  const unsigned nTracks = tracks.size();
+  matcher.match(nClusters,clusters,ecalMap,nTracks,&tracks[0],_clustMatch,_clustDist);
+ 
+
 }
 

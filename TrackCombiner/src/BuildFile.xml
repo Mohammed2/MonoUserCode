@@ -4,6 +4,7 @@
 <use name="root"/>
 <use name="rootcore"/>
 <use name="Geometry/TrackerGeometryBuilder"/>
+<use name="Monopoles/MonoAlgorithms"/>
 <export>
    <lib name="1"/>
 </export>
