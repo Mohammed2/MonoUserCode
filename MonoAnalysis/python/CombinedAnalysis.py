@@ -28,14 +28,15 @@ process.load("RecoTracker.TrackProducer.TrackRefitters_cff") #the correct one
 
 
 process.maxEvents = cms.untracked.PSet(
-     input = cms.untracked.int32(10)
+     input = cms.untracked.int32(-1)
 )
 
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
 #	'file:/data1/swilbur/Pythia_534_monopole_1000GeV_RECO_RAW.root'
-	'file:/data1/swilbur/Pythia_526_monopole_1000GeV_RECO_NoRadiation.root'
+	'file:Pythia_536p1_monopole_1700GeV_DY_lhe_QUICK_RAW_RECO.root'
     )
+    #,skipEvents = cms.untracked.uint32(21)
 )
 
 import FWCore.PythonUtilities.LumiList as LumiList
@@ -45,7 +46,9 @@ process.Monopoler = cms.EDAnalyzer('MonoNtupleDumper'
   ,isData = cms.bool(False)
   ,Output = cms.string("Combined.test.root")
   ,EcalEBRecHits = cms.InputTag("ecalRecHit","EcalRecHitsEB") 
+  ,JetTag = cms.InputTag("ak5PFJets","")
   ,ElectronTag = cms.InputTag("gsfElectrons","")
+  ,PhotonTag = cms.InputTag("photons","")
   ,StripSeedLength = cms.uint32(3)
   ,ClusterLength = cms.uint32(5)
   ,SeedThreshold = cms.double(50.)

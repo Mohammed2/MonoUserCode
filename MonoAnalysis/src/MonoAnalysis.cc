@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoAnalysis.cc,v 1.10 2013/02/27 23:27:47 cowden Exp $
+// $Id: MonoAnalysis.cc,v 1.11 2013/03/17 12:44:31 cowden Exp $
 //
 //
 
@@ -278,11 +278,6 @@ class MonoAnalysis : public edm::EDAnalyzer {
     std::vector<double> m_ehit_kDiWeird;
     std::vector<double> m_ehit_jetIso;
     std::vector<double> m_ehit_phoIso;
-
-
-
-
-
 
 };
 

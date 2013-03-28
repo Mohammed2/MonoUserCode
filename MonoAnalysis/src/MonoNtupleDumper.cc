@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoNtupleDumper.cc,v 1.2 2013/03/15 12:09:32 swilbur Exp $
+// $Id: MonoNtupleDumper.cc,v 1.3 2013/03/22 11:05:37 cowden Exp $
 //
 //
 
@@ -47,6 +47,7 @@
 #include "DataFormats/EgammaCandidates/interface/Electron.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/EgammaReco/interface/BasicCluster.h"
+#include "DataFormats/METReco/interface/PFMET.h"
 
 
 // Ecal includes
@@ -80,6 +81,11 @@
 class MonoNtupleDumper : public edm::EDAnalyzer {
 
    typedef std::vector<reco::BasicCluster> BasicClusterCollection;
+   typedef std::vector<reco::Photon> PhotonCollection;
+   //typedef std::vector<reco::Electron> ElectronCollection;
+   typedef std::vector<reco::GsfElectron> ElectronCollection;
+   typedef reco::GsfElectron Electron;
+   typedef reco::Photon Photon;
 
 
    public:
@@ -113,6 +119,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     edm::InputTag m_Tag_Jets;
     edm::InputTag m_Tag_Photons;
     edm::InputTag m_Tag_Electrons;
+    edm::InputTag m_Tag_MET;
     bool m_isData;
 
     // Monopole Ecal Observables
@@ -203,13 +210,54 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_ehit_flag;
     std::vector<double> m_ehit_kWeird;
     std::vector<double> m_ehit_kDiWeird;
-    std::vector<double> m_ehit_jetIso;
-    std::vector<double> m_ehit_phoIso;
 
 
+    // Jet information
+    unsigned m_jet_N;
+    std::vector<double> m_jet_E;
+    std::vector<double> m_jet_p;
+    std::vector<double> m_jet_pt;
+    std::vector<double> m_jet_px;
+    std::vector<double> m_jet_py;
+    std::vector<double> m_jet_pz;
+    std::vector<double> m_jet_eta;
+    std::vector<double> m_jet_phi;
+    std::vector<double> m_jet_matchDR;
+    std::vector<int>  m_jet_tagged;
+    std::vector<int>  m_jet_matchPID;
 
 
+    // Photon information
+    unsigned m_pho_N;
+    std::vector<double> m_pho_E;
+    std::vector<double> m_pho_p;
+    std::vector<double> m_pho_pt;
+    std::vector<double> m_pho_px;
+    std::vector<double> m_pho_py;
+    std::vector<double> m_pho_pz;
+    std::vector<double> m_pho_eta;
+    std::vector<double> m_pho_phi;
+    std::vector<double> m_pho_matchDR;
+    std::vector<int>  m_pho_tagged;
+    std::vector<int>  m_pho_matchPID;
 
+    // Electron information
+    unsigned m_ele_N;
+    std::vector<double> m_ele_E;
+    std::vector<double> m_ele_p;
+    std::vector<double> m_ele_pt;
+    std::vector<double> m_ele_px;
+    std::vector<double> m_ele_py;
+    std::vector<double> m_ele_pz;
+    std::vector<double> m_ele_eta;
+    std::vector<double> m_ele_phi;
+    std::vector<double> m_ele_matchDR;
+    std::vector<int>  m_ele_tagged;
+    std::vector<int>  m_ele_matchPID;
+
+    // MET information
+    double m_mpt;
+    double m_mpPhi;
 
 };
 
@@ -226,6 +274,10 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
 //
 MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
   :m_TagEcalEB_RecHits(iConfig.getParameter<edm::InputTag>("EcalEBRecHits") )
+  ,m_Tag_Jets(iConfig.getParameter<edm::InputTag>("JetTag") )
+  ,m_Tag_Photons(iConfig.getParameter<edm::InputTag>("PhotonTag") )
+  ,m_Tag_Electrons(iConfig.getParameter<edm::InputTag>("ElectronTag") )
+  ,m_Tag_MET(iConfig.getParameter<edm::InputTag>("METTag") )
   ,m_isData(iConfig.getParameter<bool>("isData") )
   ,m_ecalObs(iConfig)
   ,m_output(iConfig.getParameter<std::string>("Output"))
@@ -432,9 +484,6 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
 
 
-
-
-
   // get RecHit collection
   Handle<EBRecHitCollection > ecalRecHits;
   iEvent.getByLabel(m_TagEcalEB_RecHits,ecalRecHits);
@@ -445,9 +494,6 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   iSetup.get<CaloGeometryRecord>().get(calo);
   const CaloGeometry *m_caloGeo = (const CaloGeometry*)calo.product();
   const CaloSubdetectorGeometry *geom = m_caloGeo->getSubdetectorGeometry(DetId::Ecal,EcalBarrel);
-
-  std::vector<double> dRPhotons;
-  std::vector<double> dRJets;
 
   // fill RecHit branches
   EBRecHitCollection::const_iterator itHit = ecalRecHits->begin();
@@ -466,9 +512,6 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_ehit_kDiWeird.push_back( (*itHit).checkFlag(EcalRecHit::kDiWeird) );
     m_ehit_flag.push_back( (*itHit).recoFlag() );
 
-    m_ehit_jetIso.push_back( dRJets.size() > 0 ? dRJets[0] : -1. );
-    m_ehit_phoIso.push_back( dRPhotons.size() > 0 ? dRPhotons[0] : -1. );
-
   }
 
 
@@ -476,6 +519,105 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   const Mono::MonoEcalCluster * clusters = clusterBuilder.clusters(); 
   _Tracker->doMatch(m_nClusters,clusters,ebMap);
 
+  // get jet collection
+  Handle<reco::PFJetCollection> jets;
+  iEvent.getByLabel(m_Tag_Jets,jets);
+  const unsigned nJets = jets->size();
+
+  // fill jet branches
+  tagger.clearTags();
+  if ( !m_isData && nJets ) tagger.tag(nJets,&(*jets)[0]);
+  for ( unsigned i=0; i != nJets; i++ ) {
+
+    const reco::PFJet & jet = (*jets)[i];
+
+    m_jet_E.push_back( jet.energy() );
+    m_jet_p.push_back( jet.p() );
+    m_jet_pt.push_back( jet.pt() );
+    m_jet_px.push_back( jet.px() );
+    m_jet_py.push_back( jet.py() );
+    m_jet_pz.push_back( jet.pz() );
+    m_jet_eta.push_back( jet.eta() );
+    m_jet_phi.push_back( jet.phi() );
+
+    if ( !m_isData ) {
+      m_jet_matchDR.push_back( tagger.matchDR()[i] );
+      m_jet_tagged.push_back(tagger.tagResult()[i]);
+      m_jet_matchPID.push_back(tagger.matchPID()[i]);
+    }
+
+  }
+  m_jet_N = nJets;
+
+  // get photon collection
+  Handle<PhotonCollection> photons;
+  iEvent.getByLabel(m_Tag_Photons,photons);
+  const unsigned nPhotons = photons->size();
+
+  // fill photon branches
+  tagger.clearTags();
+  if ( !m_isData && nPhotons ) tagger.tag(nPhotons,&(*photons)[0]); 
+  for ( unsigned i=0; i != nPhotons; i++ ) {
+    
+    const Photon & pho = (*photons)[i];
+
+    m_pho_E.push_back( pho.energy() );
+    m_pho_p.push_back( pho.p() );
+    m_pho_pt.push_back( pho.pt() );
+    m_pho_px.push_back( pho.px() );
+    m_pho_py.push_back( pho.py() );
+    m_pho_pz.push_back( pho.pz() );
+    m_pho_eta.push_back( pho.eta() );
+    m_pho_phi.push_back( pho.phi() );
+
+    if ( !m_isData ) {
+      m_pho_matchDR.push_back( tagger.matchDR()[i] );
+      m_pho_tagged.push_back( tagger.tagResult()[i] );
+      m_pho_matchPID.push_back( tagger.matchPID()[i] );
+    }
+
+  }
+  m_pho_N = nPhotons;
+
+  // get electron collection
+  Handle<ElectronCollection> electrons;
+  iEvent.getByLabel(m_Tag_Electrons,electrons);
+  const unsigned nElectrons = electrons->size();
+
+  // fill electron branches
+  tagger.clearTags();
+  if ( !m_isData && nElectrons ) tagger.tag(nElectrons,&(*electrons)[0]);
+  for (unsigned i=0; i != nElectrons; i++) {
+
+    const Electron & ele = (*electrons)[i];
+
+    m_ele_E.push_back( ele.energy() );
+    m_ele_p.push_back( ele.p() );
+    m_ele_pt.push_back( ele.pt() );
+    m_ele_px.push_back( ele.px() );
+    m_ele_py.push_back( ele.py() );
+    m_ele_pz.push_back( ele.pz() );
+    m_ele_eta.push_back( ele.eta() );
+    m_ele_phi.push_back( ele.phi() );
+
+    if ( !m_isData ) {
+      m_ele_matchDR.push_back( tagger.matchDR()[i] );
+      m_ele_tagged.push_back( tagger.tagResult()[i] );
+      m_ele_matchPID.push_back( tagger.matchPID()[i] );
+    }
+
+  }
+  m_ele_N = nElectrons;
+
+  // get MET collection
+  Handle<std::vector<reco::PFMET> > met;
+  iEvent.getByLabel(m_Tag_MET,met);
+
+  // fill MET branches
+  m_mpt = (*met)[0].sumEt();
+  m_mpPhi = (*met)[0].phi();
+
+  // fill tree, must go last in this function
   m_tree->Fill();
 
 }
@@ -542,6 +684,50 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("ehit_flag",&m_ehit_flag);
 
   _Tracker->beginJob(m_tree);
+
+  m_tree->Branch("jet_N",&m_jet_N,"jet_N/i");
+  m_tree->Branch("jet_E",&m_jet_E);
+  m_tree->Branch("jet_p",&m_jet_p);
+  m_tree->Branch("jet_pt",&m_jet_pt);
+  m_tree->Branch("jet_px",&m_jet_px);
+  m_tree->Branch("jet_py",&m_jet_py);
+  m_tree->Branch("jet_pz",&m_jet_pz);
+  m_tree->Branch("jet_eta",&m_jet_eta);
+  m_tree->Branch("jet_phi",&m_jet_phi);
+  m_tree->Branch("jet_matchDR",&m_jet_matchDR);
+  m_tree->Branch("jet_tagged",&m_jet_tagged);
+  m_tree->Branch("jet_matchPID",&m_jet_matchPID);
+
+
+  m_tree->Branch("pho_N",&m_pho_N,"pho_N/i");
+  m_tree->Branch("pho_E",&m_pho_E);
+  m_tree->Branch("pho_p",&m_pho_p);
+  m_tree->Branch("pho_pt",&m_pho_pt);
+  m_tree->Branch("pho_px",&m_pho_px);
+  m_tree->Branch("pho_py",&m_pho_py);
+  m_tree->Branch("pho_pz",&m_pho_pz);
+  m_tree->Branch("pho_eta",&m_pho_eta);
+  m_tree->Branch("pho_phi",&m_pho_phi);
+  m_tree->Branch("pho_matchDR",&m_pho_matchDR);
+  m_tree->Branch("pho_tagged",&m_pho_tagged);
+  m_tree->Branch("pho_matchPID",&m_pho_matchPID);
+
+  m_tree->Branch("ele_N",&m_ele_N,"ele_N/i");
+  m_tree->Branch("ele_E",&m_ele_E);
+  m_tree->Branch("ele_p",&m_ele_p);
+  m_tree->Branch("ele_pt",&m_ele_pt);
+  m_tree->Branch("ele_px",&m_ele_px);
+  m_tree->Branch("ele_py",&m_ele_py);
+  m_tree->Branch("ele_pz",&m_ele_pz);
+  m_tree->Branch("ele_eta",&m_ele_eta);
+  m_tree->Branch("ele_phi",&m_ele_phi);
+  m_tree->Branch("ele_matchDR",&m_ele_matchDR);
+  m_tree->Branch("ele_tagged",&m_ele_tagged);
+  m_tree->Branch("ele_matchPID",&m_ele_matchPID);
+
+  m_tree->Branch("mpt_pt",&m_mpt,"mpt_pt/D");
+  m_tree->Branch("mpt_phi",&m_mpPhi,"mpt_phi/D");
+
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
@@ -632,9 +818,46 @@ void MonoNtupleDumper::clear()
     m_ehit_kWeird.clear();
     m_ehit_kDiWeird.clear();
     m_ehit_flag.clear();
-    m_ehit_jetIso.clear();
-    m_ehit_phoIso.clear();
 
+    // Jet information
+    m_jet_N = 0;
+    m_jet_E.clear();
+    m_jet_p.clear();
+    m_jet_pt.clear();
+    m_jet_px.clear();
+    m_jet_py.clear();
+    m_jet_pz.clear();
+    m_jet_eta.clear();
+    m_jet_phi.clear();
+    m_jet_matchDR.clear();
+    m_jet_tagged.clear();
+    m_jet_matchPID.clear();
+
+
+    // Photon information
+    m_pho_N = 0;
+    m_pho_E.clear();
+    m_pho_p.clear();
+    m_pho_pt.clear();
+    m_pho_px.clear();
+    m_pho_py.clear();
+    m_pho_pz.clear();
+    m_pho_eta.clear();
+    m_pho_phi.clear();
+
+    // Electron information
+    m_ele_N = 0;
+    m_ele_E.clear();
+    m_ele_p.clear();
+    m_ele_pt.clear();
+    m_ele_px.clear();
+    m_ele_py.clear();
+    m_ele_pz.clear();
+    m_ele_eta.clear();
+    m_ele_phi.clear();
+
+    m_mpt = 0.;
+    m_mpPhi = 0.;
 
 }
 

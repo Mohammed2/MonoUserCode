@@ -4,6 +4,7 @@
 <use name="SimDataFormats/TrackingHit"/>
 <use name="DataFormats/EcalRecHit"/>
 <use name="DataFormats/GeometryVector"/>
+<use name="DataFormats/METReco"/>
 <use name="PhysicsTools/UtilAlgos"/>
 <use name="Geometry/CaloGeometry"/>
 <use name="Geometry/Records"/>
