@@ -49,6 +49,7 @@ process.Monopoler = cms.EDAnalyzer('MonoNtupleDumper'
   ,JetTag = cms.InputTag("ak5PFJets","")
   ,ElectronTag = cms.InputTag("gsfElectrons","")
   ,PhotonTag = cms.InputTag("photons","")
+  ,METTag = cms.InputTag("pfMet","")
   ,StripSeedLength = cms.uint32(3)
   ,ClusterLength = cms.uint32(5)
   ,SeedThreshold = cms.double(50.)
