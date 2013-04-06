@@ -30,6 +30,8 @@ void MonoTrackMatcher::match(const unsigned nClusters, const MonoEcalCluster *cl
 
   unsigned M=0;
 
+  const double myInf = log(0);
+
   // cycle over all pairs of clusters and tracks
   // build map of distances
   for ( unsigned c=0; c != nClusters; c++ ) {
@@ -46,6 +48,8 @@ void MonoTrackMatcher::match(const unsigned nClusters, const MonoEcalCluster *cl
       // check for NAN in tphi
       // if it is continue default distance is 999
       if ( tphi != tphi ) continue;
+      if ( teta != teta ) continue;
+      if ( teta == myInf || teta == -myInf ) continue;
 
       const double dR = reco::deltaR(cphi,ceta,teta,tphi);
       matchInfoMap[c*nTracks+t] = MatchInfo(dR,c,t);  
