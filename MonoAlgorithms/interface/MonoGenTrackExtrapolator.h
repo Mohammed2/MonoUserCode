@@ -25,6 +25,7 @@ public:
     s_charge(2*M_PI*s_eps0*s_hbar*s_c*s_c/s_e)  // conversion from fundamental unit to SI using Ampere's convention in the Dirac quantization condition
     ,s_mass(1e9*s_e/s_c/s_c)  // conversion from GeV to kg
     ,s_mom(1e9*s_e/s_c)
+    ,m_x(0.),m_y(0.),m_z(0.)
     ,m_Bz(4.) { }
 
   virtual inline ~MonoGenTrackExtrapolator () { }
@@ -49,6 +50,10 @@ public:
     m_eta = mom.eta();
     m_phi = mom.phi();
 
+    m_a = 0.5*m_charge*m_Bz*m_m/m_pT/m_pT;
+    m_b = m_pz/m_pT;
+    m_c = m_z/m_m;
+
   }
 
   // set the initial conditions
@@ -65,13 +70,16 @@ public:
   inline double phi() const { return m_phi; }
 
   // position in Z as a function of r
-  inline double zVr(double r) const { return 0.5*m_charge*m_Bz*m_m*r*r/m_pT/m_pT+m_pz*r/m_pT+m_z/m_m; }
+  inline double zVr(double r) const { return m_a*r*r+m_b*r+m_c; }
 
   // position in r as a function of Z
-  inline double rVz(double z) const { return -1; }
+  // returns -1 if no solution exists
+  inline double rVz(double z) const;
 
   // position in eta as a function of z
-  inline double etaVz(double z) const { return -1; }
+  inline double etaVz(double z) const { 
+    return eta(z, rVz(z));
+  }
 
   // position in eta as a function of r
   inline double etaVr(double r) const { 
@@ -79,7 +87,7 @@ public:
   }
 
   // time as a function of z 
-  inline double tVz(double z) const { return -1; }
+  inline double tVz(double z) const { return tVr(rVz(z)); }
 
   // time as a function of r
   inline double tVr(double r) const { return m_m*r/m_pT; }
@@ -88,6 +96,10 @@ public:
   // access class data
   inline double charge() const { return m_charge; }
   inline double mass() const { return m_m; }
+
+  inline double a() const { return m_a; }
+  inline double b() const { return m_b; }
+  inline double c() const { return m_c; }
 
 
   // helper functions
@@ -109,7 +121,7 @@ private:
 
   static constexpr double s_eps0 = 8.85418782e-12;
   static constexpr double s_hbar= 1.054571726e-34;
-  static constexpr double s_c = 299792458;
+  static constexpr double s_c = 299792458.;
   static constexpr double s_e = 1.60217646e-19;
   const double s_charge;
   const double s_mass;
@@ -134,13 +146,33 @@ private:
   double m_y;
   double m_z;
 
-
   // magnetic field data
   double m_Bz;  
+
+  // extrapolation parameters
+  double m_a;
+  double m_b;
+  double m_c;
 
 
 };
 
+
+inline double MonoGenTrackExtrapolator::rVz(double z) const 
+{
+  // check we aren't dividing by zero
+  assert( fabs(m_a) > 1e-10 );
+
+  // check if soluation exists
+  if ( m_a*z < 0 && m_b*m_b < -4.*m_a*z ) {
+    return -1.;
+  } 
+
+  // return the radius
+  return fabs((-m_b+sqrt(m_b*m_b+4*m_a*z))/(2*m_a)); 
+  //return 1.;
+
+}
 
 } // end Mono namespace
 

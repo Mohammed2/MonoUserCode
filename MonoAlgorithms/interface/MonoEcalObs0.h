@@ -356,8 +356,9 @@ private:
 class GenMonoClusterTagger {
 
 public:
-  inline GenMonoClusterTagger(double dRcut) 
+  inline GenMonoClusterTagger(double dRcut,bool tagEB = true) 
     :m_dRcut(dRcut) 
+    ,m_tagEB(tagEB)
     ,m_nClusters(0U)
     { 
       m_tagged.resize(50U);
@@ -384,11 +385,23 @@ public:
   // add gen monopole
   inline void addMonopole(const HepMC::GenParticle part) {
     m_monoPID.push_back(part.pdg_id());
-    m_extrap.setMonopole(part);
-    m_monoEta.push_back(m_extrap.etaVr(s_EcalR));
-    m_monoPhi.push_back(m_extrap.phi());
-    m_monoTime.push_back(m_extrap.tVr(s_EcalR));
     m_monoPt.push_back(part.momentum().perp());
+    m_extrap.setMonopole(part);
+
+    if ( m_tagEB ) {
+      m_monoEta.push_back(m_extrap.etaVr(s_EcalR));
+      m_monoPhi.push_back(m_extrap.phi());
+      m_monoTime.push_back(m_extrap.tVr(s_EcalR));
+    } else {
+      double z = s_EEz;
+      double tmp = m_extrap.rVz(z);
+      if ( tmp == -1 ) {
+	z = -s_EEz;
+	tmp = m_extrap.rVz(z);
+      }
+      m_monoEta.push_back(m_extrap.eta(z,tmp));
+      m_monoTime.push_back(m_extrap.tVz(z));
+    }
   } 
 
   // clear member data
@@ -455,8 +468,10 @@ private:
   std::vector<int> m_monoPID;
 
   static constexpr double s_EcalR = 1.29;
+  static constexpr double s_EEz = 3.144;
 
   double m_dRcut;  
+  bool m_tagEB;
   unsigned m_nClusters;
 
 };

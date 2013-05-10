@@ -492,20 +492,44 @@ void GenMonoClusterTagger::initialize( const edm::Event &ev, const edm::EventSet
 
   if ( mono ) {
     m_extrap.setMonopole(*mono);
-    m_monoEta.push_back( m_extrap.etaVr(s_EcalR) );
-    m_monoTime.push_back( m_extrap.tVr(s_EcalR) );
+    m_monoPID.push_back( mono->pdg_id() );
     m_monoPt.push_back( mono->momentum().perp() );
     m_monoPhi.push_back( m_extrap.phi() );
-    m_monoPID.push_back( mono->pdg_id() );
+    
+    if ( m_tagEB ) {
+      m_monoEta.push_back( m_extrap.etaVr(s_EcalR) );
+      m_monoTime.push_back( m_extrap.tVr(s_EcalR) );
+    } else {
+      double z = s_EEz;
+      double tmp = m_extrap.rVz(z);
+      if ( tmp == -1 ) {
+      	z = -z;
+	tmp = m_extrap.rVz(tmp);
+      }
+      m_monoEta.push_back( m_extrap.eta(z,tmp) );
+      m_monoTime.push_back( m_extrap.tVz(z) );
+    }
   } 
 
   if ( anti ) {
     m_extrap.setMonopole(*anti);
-    m_monoEta.push_back( m_extrap.etaVr(s_EcalR) );
-    m_monoTime.push_back( m_extrap.tVr(s_EcalR) );
+    m_monoPID.push_back( anti->pdg_id() );
     m_monoPt.push_back( anti->momentum().perp() );
     m_monoPhi.push_back( m_extrap.phi() );
-    m_monoPID.push_back( anti->pdg_id() );
+
+    if ( m_tagEB ) {
+      m_monoEta.push_back( m_extrap.etaVr(s_EcalR) );
+      m_monoTime.push_back( m_extrap.tVr(s_EcalR) );
+    } else {
+      double z = s_EEz;
+      double tmp = m_extrap.rVz(z);
+      if ( tmp == -1 ) {
+      	z = -z;
+	tmp = m_extrap.rVz(tmp);
+      }
+      m_monoEta.push_back( m_extrap.eta(z,tmp) );
+      m_monoTime.push_back( m_extrap.tVz(z) );
+    }
   }
 
 
