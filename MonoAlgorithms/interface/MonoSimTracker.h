@@ -24,6 +24,7 @@
 #include "SimDataFormats/TrackingHit/interface/PSimHitContainer.h"
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
 #include "DataFormats/EcalDetId/interface/EBDetId.h"
+#include "DataFormats/EcalDetId/interface/EEDetId.h"
 
 // Geometries
 #include "Geometry/TrackerGeometryBuilder/interface/TrackerGeometry.h"
@@ -50,6 +51,7 @@ namespace Mono {
 // enumerator to describe sub detectors
 enum subdet {
   EcalEB=1,
+  EcalEE,
   PixelEBLowTof
 };
 

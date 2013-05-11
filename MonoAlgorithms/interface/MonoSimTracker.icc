@@ -35,9 +35,10 @@ void MonoSimTracker<PCaloHit,CaloGeometry>::fillHits(const edm::Event &ev, const
   edm::SimTrackContainer::const_iterator tit = SimTracks->begin();
 
 
-  edm::InputTag caloHitsTag("g4SimHits","EcalHitsEB");
+  //edm::InputTag caloHitsTag("g4SimHits","EcalHitsEB");
   edm::Handle<edm::PCaloHitContainer> CaloHits;
-  ev.getByLabel(caloHitsTag,CaloHits);
+  if ( m_subdet == EcalEB )  ev.getByLabel(edm::InputTag("g4SimHits","EcalHitsEB"),CaloHits);
+  else if ( m_subdet == EcalEE ) ev.getByLabel(edm::InputTag("g4SimHits","EcalHitsEE"),CaloHits);
 
 
   edm::PCaloHitContainer::const_iterator cit = CaloHits->begin();
@@ -74,11 +75,19 @@ const double MonoSimTracker<PCaloHit,CaloGeometry>::eta(const MonoEnum m,const u
 
   if ( i >= m_hits[m].size() ) return -999;
 
-  EBDetId detId( m_hits[m][i].id() );
-  const CaloCellGeometry *cell = m_geo->getGeometry( detId );
 
-  if ( cell ) return cell->getPosition().eta();
- 
+  if ( m_subdet == EcalEB ) {
+    EBDetId detId( m_hits[m][i].id() );
+    assert( detId.validDetId(detId.ieta(),detId.iphi()) );
+    const CaloCellGeometry *cell = m_geo->getGeometry( detId );
+    if ( cell ) return cell->getPosition().eta();
+  } else if ( m_subdet == EcalEE ) {
+    EEDetId detId( m_hits[m][i].id() );
+    assert( detId.validDetId(detId.ix(),detId.iy(),detId.zside()) );
+    const CaloCellGeometry *cell = m_geo->getGeometry( detId );
+    if ( cell ) return cell->getPosition().eta();
+  }
+
   return -999;
 }
 
@@ -89,10 +98,17 @@ const double MonoSimTracker<PCaloHit,CaloGeometry>::phi(const MonoEnum m, const 
 
   if ( i >= m_hits[m].size() ) return -999;
 
-  EBDetId detId( m_hits[m][i].id() );
-  const CaloCellGeometry *cell = m_geo->getGeometry( detId );
-
-  if ( cell ) return cell->getPosition().phi();
+  if ( m_subdet == EcalEB ) {
+    EBDetId detId( m_hits[m][i].id() );
+    assert( detId.validDetId(detId.ieta(),detId.iphi()) );
+    const CaloCellGeometry *cell = m_geo->getGeometry( detId );
+    if ( cell ) return cell->getPosition().phi();
+  } else if ( m_subdet == EcalEE ){
+    EEDetId detId( m_hits[m][i].id() );
+    assert( detId.validDetId(detId.ix(),detId.iy(),detId.zside()) );
+    const CaloCellGeometry *cell = m_geo->getGeometry( detId );
+    if ( cell ) return cell->getPosition().phi();
+  }
 
   return -999;
 }
@@ -103,10 +119,17 @@ const double MonoSimTracker<PCaloHit,CaloGeometry>::x(const MonoEnum m,const uns
 
   if ( i >= m_hits[m].size() ) return -999;
 
-  EBDetId detId( m_hits[m][i].id() );
-  const CaloCellGeometry *cell = m_geo->getGeometry( detId );
-
-  if ( cell ) return cell->getPosition().x();
+  if ( m_subdet == EcalEB ) {
+    EBDetId detId( m_hits[m][i].id() );
+    assert( detId.validDetId(detId.ieta(),detId.iphi()) );
+    const CaloCellGeometry *cell = m_geo->getGeometry( detId );
+    if ( cell ) return cell->getPosition().x();
+  } else if ( m_subdet == EcalEE ) {
+    EEDetId detId( m_hits[m][i].id() );
+    assert( detId.validDetId(detId.ix(),detId.iy(),detId.zside()) );
+    const CaloCellGeometry *cell = m_geo->getGeometry( detId );
+    if ( cell ) return cell->getPosition().x();
+  }
 
   return -999;
 }
@@ -117,10 +140,17 @@ const double MonoSimTracker<PCaloHit,CaloGeometry>::y(const MonoEnum m,const uns
 
   if ( i >= m_hits[m].size() ) return -999;
 
-  EBDetId detId( m_hits[m][i].id() );
-  const CaloCellGeometry *cell = m_geo->getGeometry( detId );
-
-  if ( cell ) return cell->getPosition().y();
+  if ( m_subdet == EcalEB ) {
+    EBDetId detId( m_hits[m][i].id() );
+    assert( detId.validDetId(detId.ieta(),detId.iphi()) );
+    const CaloCellGeometry *cell = m_geo->getGeometry( detId );
+    if ( cell ) return cell->getPosition().y();
+  } else if ( m_subdet == EcalEE ) {
+    EEDetId detId( m_hits[m][i].id() );
+    assert( detId.validDetId(detId.ix(),detId.iy(),detId.zside()) );
+    const CaloCellGeometry *cell = m_geo->getGeometry( detId );
+    if ( cell ) return cell->getPosition().y();
+  }
   
   return -999;
 }
@@ -131,10 +161,17 @@ const double MonoSimTracker<PCaloHit,CaloGeometry>::z(const MonoEnum m,const uns
 
   if ( i >= m_hits[m].size() ) return -999;
 
-  EBDetId detId( m_hits[m][i].id() );
-  const CaloCellGeometry *cell = m_geo->getGeometry( detId );
-
-  if ( cell ) return cell->getPosition().z();
+  if ( m_subdet == EcalEB ) {
+    EBDetId detId( m_hits[m][i].id() );
+    assert( detId.validDetId(detId.ieta(),detId.iphi()) );
+    const CaloCellGeometry *cell = m_geo->getGeometry( detId );
+    if ( cell ) return cell->getPosition().z();
+  } else if ( m_subdet == EcalEE ) {
+    EEDetId detId( m_hits[m][i].id() );
+    assert( detId.validDetId(detId.ix(),detId.iy(),detId.zside()) );
+    const CaloCellGeometry *cell = m_geo->getGeometry( detId );
+    if ( cell ) return cell->getPosition().z();
+  }
 
   return -999;
 }
