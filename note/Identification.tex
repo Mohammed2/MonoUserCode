@@ -1,0 +1,30 @@
+\section{Monopole Identification}
+
+We identify monopoles using a combination of the tracking and calorimetry.  The six parameters found from the track fit are used to extrapolate the track to the calorimeter, and the nearest Ecal cluster within {\color{red} $\Delta R<0.5$} is assigned to that track.  If a track/cluster pair has at least {\color{red} 95\%} of the calorimeter energy in the central seed and at least {\color{red} 50\%} of the $dE/dx$ hits are saturated, it is called a monopole.
+
+\subsection{Efficiency Estimates}
+
+Because monopoles are extremely highly ionizing, we have a very high efficiency to find them in the detector.  However... {\color{red} acceptance for mpl to hit ecal, spike-killing, trigger efficiency.  final number $\sim 8.2\%$.}
+
+\subsection{Fake Rate Estimates}
+
+The two variables we use for monopole identification, track $dE/dx$ and cluster seed fraction, are uncorrelated for background (SM) particles.  Therefore, we use the ABCD method to calculate the expected background in our signal sample.
+
+{\color{red} Test correlation with much looser cuts?}
+
+Looking at the 2012 dataset, we find {\color{red} X} track/cluster pairs in region A, {\color{red} Y} in region B, and {\color{red} Z} in region C.  This leads to an expectation of {\color{red} 3.2} background events in the signal region.  
+
+\begin{table}
+\centering
+\begin{tabular}{l|c|c|}
+ & Low $dE/dx$ & High $dE/dx$ \\
+\hline
+Low Curvature & Region A & Region B \\
+\hline
+High Curvature & Region C & Region D \\
+\hline
+\end{tabular}
+\caption{Regions defined for background estimation}
+\label{tab:MplTrackBackgroundABCD}
+\end{table}
+
