@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoNtupleDumper.cc,v 1.3 2013/03/22 11:05:37 cowden Exp $
+// $Id: MonoNtupleDumper.cc,v 1.4 2013/03/28 20:43:48 cowden Exp $
 //
 //
 
@@ -462,7 +462,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   // get BasicCluster Collection
   Handle<BasicClusterCollection> bClusters;
-  edm::InputTag bcClusterTag("hybridSuperClusters","hybridBarrelBasicClusters"); 
+  edm::InputTag bcClusterTag("hybridSuperClusters","uncleanOnlyHybridBarrelBasicClusters"); 
   iEvent.getByLabel(bcClusterTag,bClusters);
   const unsigned nbClusters = bClusters->size();
 

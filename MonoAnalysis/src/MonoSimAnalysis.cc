@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoSimAnalysis.cc,v 1.6 2013/02/27 20:27:36 cowden Exp $
+// $Id: MonoSimAnalysis.cc,v 1.7 2013/03/17 12:44:31 cowden Exp $
 //
 //
 
@@ -308,7 +308,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 
 
   Mono::MonoSimTracker<PSimHit,TrackerGeometry> monoPixST(iEvent,iSetup,Mono::PixelEBLowTof);
-  Mono::MonoSimTracker<PCaloHit,CaloGeometry> monoEcalST(iEvent,iSetup,Mono::EcalEB);
+  Mono::MonoSimTracker<PCaloHit,CaloGeometry> monoEcalST(iEvent,iSetup,Mono::EcalEE);
 
   Mono::MonoEnum m = Mono::monopole;
   Mono::MonoEnum a = Mono::anti_monopole;
