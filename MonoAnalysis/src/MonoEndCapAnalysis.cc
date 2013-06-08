@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoEndCapAnalysis.cc,v 1.7 2012/12/05 17:39:40 cowden Exp $
+// $Id: MonoEndCapAnalysis.cc,v 1.1 2013/05/10 21:57:04 cowden Exp $
 //
 //
 
@@ -350,7 +350,7 @@ MonoEndCapAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
   // get BasicCluster Collection
   Handle<BasicClusterCollection> bClusters;
-  edm::InputTag bcClusterTag("multi5x5SuperClusters","multi5x5EndcapBasicClusters"); 
+  edm::InputTag bcClusterTag("multi5x5SuperClusters","uncleanOnlyMulti5x5EndcapBasicClusters"); 
   iEvent.getByLabel(bcClusterTag,bClusters);
   const unsigned nbClusters = bClusters->size();
 

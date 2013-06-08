@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoNtupleDumper.cc,v 1.4 2013/03/28 20:43:48 cowden Exp $
+// $Id: MonoNtupleDumper.cc,v 1.5 2013/06/06 19:32:05 cowden Exp $
 //
 //
 
@@ -53,9 +53,11 @@
 // Ecal includes
 #include "Geometry/CaloGeometry/interface/CaloGeometry.h"
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
+#include "Geometry/Records/interface/CaloTopologyRecord.h"
 #include "Geometry/CaloGeometry/interface/CaloSubdetectorGeometry.h"
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
 #include "DataFormats/EcalDetId/interface/EBDetId.h"
+#include "RecoEcal/EgammaCoreTools/interface/EcalClusterTools.h"
 
 
 // Monopole analysis includes
@@ -196,6 +198,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_egClust_size;
     std::vector<double> m_egClust_eta;
     std::vector<double> m_egClust_phi;
+    std::vector<double> m_egClust_frac5;
     std::vector<double> m_egClust_matchDR;
     std::vector<double> m_egClust_tagged;
     std::vector<double> m_egClust_matchPID;
@@ -460,28 +463,6 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
 
 
-  // get BasicCluster Collection
-  Handle<BasicClusterCollection> bClusters;
-  edm::InputTag bcClusterTag("hybridSuperClusters","uncleanOnlyHybridBarrelBasicClusters"); 
-  iEvent.getByLabel(bcClusterTag,bClusters);
-  const unsigned nbClusters = bClusters->size();
-
-  tagger.clearTags();
-  if ( !m_isData && nbClusters ) tagger.tag(nbClusters,&(*bClusters)[0]);
-
-  for ( unsigned i=0; i != nbClusters; i++ ) {
-    m_egClust_E.push_back( (*bClusters)[i].energy() );
-    m_egClust_size.push_back( (*bClusters)[i].size() );
-    m_egClust_eta.push_back( (*bClusters)[i].eta() );
-    m_egClust_phi.push_back( (*bClusters)[i].phi() );
-    if ( !m_isData ) {
-      m_egClust_matchDR.push_back(tagger.matchDR()[i]);
-      m_egClust_tagged.push_back(tagger.tagResult()[i]);
-      m_egClust_matchPID.push_back(tagger.matchPID()[i]);
-    }
-  }
-  m_nClusterEgamma = nbClusters;
-
 
 
   // get RecHit collection
@@ -490,10 +471,15 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   assert( ecalRecHits->size() > 0 );
 
 
+  // get calo geometry and topology
   ESHandle<CaloGeometry> calo;
   iSetup.get<CaloGeometryRecord>().get(calo);
   const CaloGeometry *m_caloGeo = (const CaloGeometry*)calo.product();
   const CaloSubdetectorGeometry *geom = m_caloGeo->getSubdetectorGeometry(DetId::Ecal,EcalBarrel);
+
+  ESHandle<CaloTopology> topo;
+  iSetup.get<CaloTopologyRecord>().get(topo);
+  const CaloTopology * topology = (const CaloTopology*)topo.product();
 
   // fill RecHit branches
   EBRecHitCollection::const_iterator itHit = ecalRecHits->begin();
@@ -515,9 +501,44 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   }
 
 
+  // get BasicCluster Collection
+  Handle<BasicClusterCollection> bClusters;
+  edm::InputTag bcClusterTag("hybridSuperClusters","uncleanOnlyHybridBarrelBasicClusters"); 
+  iEvent.getByLabel(bcClusterTag,bClusters);
+  const unsigned nbClusters = bClusters->size();
+
+  EcalClusterTools ecalTool;
+  std::vector<int> exclFlags;
+  std::vector<int> sevExcl;
+
+  tagger.clearTags();
+  if ( !m_isData && nbClusters ) tagger.tag(nbClusters,&(*bClusters)[0]);
+
+  for ( unsigned i=0; i != nbClusters; i++ ) {
+    m_egClust_E.push_back( (*bClusters)[i].energy() );
+    m_egClust_size.push_back( (*bClusters)[i].size() );
+    m_egClust_eta.push_back( (*bClusters)[i].eta() );
+    m_egClust_phi.push_back( (*bClusters)[i].phi() );
+
+    const float e55 = ecalTool.e5x5((*bClusters)[i],ecalRecHits.product(),topology);
+    const float e51 = ecalTool.e5x1((*bClusters)[i],ecalRecHits.product(),topology);
+    m_egClust_frac5.push_back( e51/e55 );
+
+    if ( !m_isData ) {
+      m_egClust_matchDR.push_back(tagger.matchDR()[i]);
+      m_egClust_tagged.push_back(tagger.tagResult()[i]);
+      m_egClust_matchPID.push_back(tagger.matchPID()[i]);
+    }
+  }
+  m_nClusterEgamma = nbClusters;
+
+
+  ////////////////////////////////
+  // Tracking analysis
   _Tracker->analyze(iEvent, iSetup);
   const Mono::MonoEcalCluster * clusters = clusterBuilder.clusters(); 
   _Tracker->doMatch(m_nClusters,clusters,ebMap);
+
 
   // get jet collection
   Handle<reco::PFJetCollection> jets;
@@ -671,6 +692,7 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("egClust_size",&m_egClust_size);
   m_tree->Branch("egClust_eta",&m_egClust_eta);
   m_tree->Branch("egClust_phi",&m_egClust_phi);
+  m_tree->Branch("egClust_frac",&m_egClust_frac5);
   m_tree->Branch("egClust_matchDR",&m_egClust_matchDR);
   m_tree->Branch("egClust_matchPID",&m_egClust_matchPID);
   m_tree->Branch("egClust_tagged",&m_egClust_tagged);
@@ -804,6 +826,7 @@ void MonoNtupleDumper::clear()
     m_egClust_size.clear();
     m_egClust_eta.clear();
     m_egClust_phi.clear();
+    m_egClust_frac5.clear();
     m_egClust_matchDR.clear();
     m_egClust_matchPID.clear();
     m_egClust_tagged.clear();

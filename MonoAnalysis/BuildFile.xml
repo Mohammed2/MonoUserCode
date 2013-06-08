@@ -9,6 +9,7 @@
 <use name="Geometry/CaloGeometry"/>
 <use name="Geometry/Records"/>
 <use name="L1Trigger/GlobalTriggerAnalyzer"/>
+<use name="RecoEcal/EgammaCoreTools"/>
 <use name="Monopoles/MonoAlgorithms"/>
 <use name="Monopoles/TrackCombiner"/>
 <use name="root"/>
