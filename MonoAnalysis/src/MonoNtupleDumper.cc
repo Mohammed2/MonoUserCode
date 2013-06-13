@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoNtupleDumper.cc,v 1.5 2013/06/06 19:32:05 cowden Exp $
+// $Id: MonoNtupleDumper.cc,v 1.6 2013/06/08 04:24:43 cowden Exp $
 //
 //
 
@@ -198,7 +198,10 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_egClust_size;
     std::vector<double> m_egClust_eta;
     std::vector<double> m_egClust_phi;
-    std::vector<double> m_egClust_frac5;
+    std::vector<double> m_egClust_frac51;
+    std::vector<double> m_egClust_frac15;
+    std::vector<double> m_egClust_e55;
+    std::vector<double> m_egClust_eMax;
     std::vector<double> m_egClust_matchDR;
     std::vector<double> m_egClust_tagged;
     std::vector<double> m_egClust_matchPID;
@@ -522,7 +525,12 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
     const float e55 = ecalTool.e5x5((*bClusters)[i],ecalRecHits.product(),topology);
     const float e51 = ecalTool.e5x1((*bClusters)[i],ecalRecHits.product(),topology);
-    m_egClust_frac5.push_back( e51/e55 );
+    const float e15 = ecalTool.e1x5((*bClusters)[i],ecalRecHits.product(),topology);
+    const float eMax = ecalTool.eMax((*bClusters)[i],ecalRecHits.product());
+    m_egClust_frac51.push_back( e51/e55 );
+    m_egClust_frac15.push_back( e15/e55 );
+    m_egClust_e55.push_back(e55);
+    m_egClust_eMax.push_back(eMax/e55);
 
     if ( !m_isData ) {
       m_egClust_matchDR.push_back(tagger.matchDR()[i]);
@@ -692,7 +700,10 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("egClust_size",&m_egClust_size);
   m_tree->Branch("egClust_eta",&m_egClust_eta);
   m_tree->Branch("egClust_phi",&m_egClust_phi);
-  m_tree->Branch("egClust_frac",&m_egClust_frac5);
+  m_tree->Branch("egClust_frac51",&m_egClust_frac51);
+  m_tree->Branch("egClust_frac15",&m_egClust_frac15);
+  m_tree->Branch("egClust_e55",&m_egClust_e55);
+  m_tree->Branch("egClust_eMax",&m_egClust_eMax);
   m_tree->Branch("egClust_matchDR",&m_egClust_matchDR);
   m_tree->Branch("egClust_matchPID",&m_egClust_matchPID);
   m_tree->Branch("egClust_tagged",&m_egClust_tagged);
@@ -826,7 +837,10 @@ void MonoNtupleDumper::clear()
     m_egClust_size.clear();
     m_egClust_eta.clear();
     m_egClust_phi.clear();
-    m_egClust_frac5.clear();
+    m_egClust_frac51.clear();
+    m_egClust_frac15.clear();
+    m_egClust_e55.clear();
+    m_egClust_eMax.clear();
     m_egClust_matchDR.clear();
     m_egClust_matchPID.clear();
     m_egClust_tagged.clear();
