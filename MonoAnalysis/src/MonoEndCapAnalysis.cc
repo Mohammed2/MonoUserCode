@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoEndCapAnalysis.cc,v 1.1 2013/05/10 21:57:04 cowden Exp $
+// $Id: MonoEndCapAnalysis.cc,v 1.2 2013/06/08 04:24:43 cowden Exp $
 //
 //
 
@@ -57,9 +57,11 @@
 // Ecal includes
 #include "Geometry/CaloGeometry/interface/CaloGeometry.h"
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
+#include "Geometry/Records/interface/CaloTopologyRecord.h"
 #include "Geometry/CaloGeometry/interface/CaloSubdetectorGeometry.h"
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
 #include "DataFormats/EcalDetId/interface/EEDetId.h"
+#include "RecoEcal/EgammaCoreTools/interface/EcalClusterTools.h"
 
 // Monopole algorithms includes
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalObs0.h"
@@ -172,10 +174,26 @@ class MonoEndCapAnalysis : public edm::EDAnalyzer {
     std::vector<double> m_egClust_size;
     std::vector<double> m_egClust_eta;
     std::vector<double> m_egClust_phi;
+    std::vector<double> m_egClust_frac51;
+    std::vector<double> m_egClust_frac15;
+    std::vector<double> m_egClust_e55;
+    std::vector<double> m_egClust_eMax;
     std::vector<double> m_egClust_matchDR;
     std::vector<double> m_egClust_tagged;
     std::vector<double> m_egClust_matchPID;
 
+    unsigned m_nCleanClusterEgamma;
+    std::vector<double> m_cleanClust_E;
+    std::vector<double> m_cleanClust_size;
+    std::vector<double> m_cleanClust_eta;
+    std::vector<double> m_cleanClust_phi;
+    std::vector<double> m_cleanClust_frac51;
+    std::vector<double> m_cleanClust_frac15;
+    std::vector<double> m_cleanClust_e55;
+    std::vector<double> m_cleanClust_eMax;
+    std::vector<double> m_cleanClust_matchDR;
+    std::vector<double> m_cleanClust_tagged;
+    std::vector<double> m_cleanClust_matchPID;
 
     // generator monopoles
     double m_mono_eta;
@@ -284,7 +302,7 @@ MonoEndCapAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
   // create histograms for End cap maps
   char name[50];
-  sprintf(name,"eMapp_%d",m_event);
+  /*sprintf(name,"eMapp_%d",m_event);
   TH2D * hEmapp = m_fs->make<TH2D>(name,"",s_nBins,s_xMin,s_xMax,s_nBins,s_xMin,s_xMax);
 
   sprintf(name,"tMapp_%d",m_event);
@@ -299,7 +317,7 @@ MonoEndCapAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   sprintf(name,"checkp_%d",m_event);
   TH2D * hCheckp = m_fs->make<TH2D>(name,"",s_nBins,s_xMin,s_xMax,s_nBins,s_xMin,s_xMax);
   sprintf(name,"checkn_%d",m_event);
-  TH2D * hCheckn = m_fs->make<TH2D>(name,"",s_nBins,s_xMin,s_xMax,s_nBins,s_xMin,s_xMax);
+  TH2D * hCheckn = m_fs->make<TH2D>(name,"",s_nBins,s_xMin,s_xMax,s_nBins,s_xMin,s_xMax);*/
 
   ESHandle<CaloGeometry> calo;
   iSetup.get<CaloGeometryRecord>().get(calo);
@@ -326,7 +344,7 @@ MonoEndCapAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     m_ehit_y.push_back( cell->getPosition().y() );
     m_ehit_z.push_back( cell->getPosition().z() );
 
-    if (detId.zside() > 0 ) {
+    /*if (detId.zside() > 0 ) {
       int bin = hEmapp->FindBin(detId.ix(),detId.iy());
       hEmapp->SetBinContent(bin,(*itHit).energy());
       hTmapp->SetBinContent(bin,(*itHit).time());
@@ -338,14 +356,18 @@ MonoEndCapAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       hTmapn->SetBinContent(bin,(*itHit).time());
       hCheckn->SetBinContent(bin,hCheckn->GetBinContent(bin)+1);
 
-    }
+    }*/
   }
 
-  for ( unsigned b=1; b <= s_nBins*s_nBins; b++ ){
+  /*for ( unsigned b=1; b <= s_nBins*s_nBins; b++ ){
     m_check_plus.push_back( hCheckp->GetBinContent(b) );
     m_check_minus.push_back( hCheckn->GetBinContent(b) );
-  }
+  }*/
 
+  // get a handle on topology
+  ESHandle<CaloTopology> topo;
+  iSetup.get<CaloTopologyRecord>().get(topo);
+  const CaloTopology * topology = (const CaloTopology*)topo.product();
 
 
   // get BasicCluster Collection
@@ -353,6 +375,8 @@ MonoEndCapAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   edm::InputTag bcClusterTag("multi5x5SuperClusters","uncleanOnlyMulti5x5EndcapBasicClusters"); 
   iEvent.getByLabel(bcClusterTag,bClusters);
   const unsigned nbClusters = bClusters->size();
+
+  EcalClusterTools ecalTool;
 
   // cluster tagger
   Mono::GenMonoClusterTagger tagger(0.3);
@@ -367,6 +391,15 @@ MonoEndCapAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     m_egClust_eta.push_back( (*bClusters)[i].eta() );
     m_egClust_phi.push_back( (*bClusters)[i].phi() );
 
+    const float e55 = ecalTool.e5x5((*bClusters)[i],ecalRecHits.product(),topology);
+    const float e51 = ecalTool.e5x1((*bClusters)[i],ecalRecHits.product(),topology);
+    const float e15 = ecalTool.e1x5((*bClusters)[i],ecalRecHits.product(),topology);
+    const float eMax = ecalTool.eMax((*bClusters)[i],ecalRecHits.product());
+    m_egClust_frac51.push_back( e51/e55 );
+    m_egClust_frac15.push_back( e15/e55 );
+    m_egClust_e55.push_back(e55);
+    m_egClust_eMax.push_back(eMax/e55);
+
     if ( !m_isData ) {
       m_egClust_matchDR.push_back(tagger.matchDR()[i]);
       m_egClust_tagged.push_back(tagger.tagResult()[i]);
@@ -374,6 +407,41 @@ MonoEndCapAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     }
   }
   m_nClusterEgamma = nbClusters;
+
+
+
+  // get BasicCluster Collection
+  Handle<BasicClusterCollection> cleanClusters;
+  edm::InputTag cleanClusterTag("multi5x5SuperClusters","multi5x5EndcapBasicClusters"); 
+  iEvent.getByLabel(cleanClusterTag,cleanClusters);
+  const unsigned nCleanClusters = cleanClusters->size();
+
+  // cluster tagger
+  tagger.clearTags();
+  if ( !m_isData && nCleanClusters ) tagger.tag(nCleanClusters,&(*cleanClusters)[0]);
+
+  for ( unsigned i=0; i != nCleanClusters; i++ ) {
+    m_cleanClust_E.push_back( (*cleanClusters)[i].energy() );
+    m_cleanClust_size.push_back( (*cleanClusters)[i].size() );
+    m_cleanClust_eta.push_back( (*cleanClusters)[i].eta() );
+    m_cleanClust_phi.push_back( (*cleanClusters)[i].phi() );
+
+    const float e55 = ecalTool.e5x5((*cleanClusters)[i],ecalRecHits.product(),topology);
+    const float e51 = ecalTool.e5x1((*cleanClusters)[i],ecalRecHits.product(),topology);
+    const float e15 = ecalTool.e1x5((*cleanClusters)[i],ecalRecHits.product(),topology);
+    const float eMax = ecalTool.eMax((*cleanClusters)[i],ecalRecHits.product());
+    m_cleanClust_frac51.push_back( e51/e55 );
+    m_cleanClust_frac15.push_back( e15/e55 );
+    m_cleanClust_e55.push_back(e55);
+    m_cleanClust_eMax.push_back(eMax/e55);
+
+    if ( !m_isData ) {
+      m_cleanClust_matchDR.push_back(tagger.matchDR()[i]);
+      m_cleanClust_tagged.push_back(tagger.tagResult()[i]);
+      m_cleanClust_matchPID.push_back(tagger.matchPID()[i]);
+    }
+  }
+  m_nCleanClusterEgamma = nCleanClusters;
 
 
   //////////////////////////////////////
@@ -517,9 +585,26 @@ MonoEndCapAnalysis::beginRun(edm::Run const& run, edm::EventSetup const& es)
   m_tree->Branch("egClust_size",&m_egClust_size);
   m_tree->Branch("egClust_eta",&m_egClust_eta);
   m_tree->Branch("egClust_phi",&m_egClust_phi);
+  m_tree->Branch("egClust_frac51",&m_egClust_frac51);
+  m_tree->Branch("egClust_frac15",&m_egClust_frac15);
+  m_tree->Branch("egClust_eMax",&m_egClust_eMax);
+  m_tree->Branch("egClust_e55",&m_egClust_e55);
   m_tree->Branch("egClust_matchDR",&m_egClust_matchDR);
   m_tree->Branch("egClust_matchPID",&m_egClust_matchPID);
   m_tree->Branch("egClust_tagged",&m_egClust_tagged);
+
+  m_tree->Branch("cleanClust_N",&m_nCleanClusterEgamma,"cleanClust_N/i");
+  m_tree->Branch("cleanClust_E",&m_cleanClust_E);
+  m_tree->Branch("cleanClust_size",&m_cleanClust_size);
+  m_tree->Branch("cleanClust_eta",&m_cleanClust_eta);
+  m_tree->Branch("cleanClust_phi",&m_cleanClust_phi);
+  m_tree->Branch("cleanClust_frac51",&m_cleanClust_frac51);
+  m_tree->Branch("cleanClust_frac15",&m_cleanClust_frac15);
+  m_tree->Branch("cleanClust_eMax",&m_cleanClust_eMax);
+  m_tree->Branch("cleanClust_e55",&m_cleanClust_e55);
+  m_tree->Branch("cleanClust_matchDR",&m_cleanClust_matchDR);
+  m_tree->Branch("cleanClust_matchPID",&m_cleanClust_matchPID);
+  m_tree->Branch("cleanClust_tagged",&m_cleanClust_tagged);
 
   m_tree->Branch("mono_eta",&m_mono_eta,"mono_eta/D");
   m_tree->Branch("mono_phi",&m_mono_phi,"mono_phi/D");
@@ -570,9 +655,26 @@ void MonoEndCapAnalysis::clear()
     m_egClust_size.clear();
     m_egClust_eta.clear();
     m_egClust_phi.clear();
+    m_egClust_frac51.clear();
+    m_egClust_frac15.clear();
+    m_egClust_e55.clear();
+    m_egClust_eMax.clear();
     m_egClust_matchDR.clear();
     m_egClust_matchPID.clear();
     m_egClust_tagged.clear();
+
+    m_nCleanClusterEgamma = 0;
+    m_cleanClust_E.clear();
+    m_cleanClust_size.clear();
+    m_cleanClust_eta.clear();
+    m_cleanClust_phi.clear();
+    m_cleanClust_frac51.clear();
+    m_cleanClust_frac15.clear();
+    m_cleanClust_e55.clear();
+    m_cleanClust_eMax.clear();
+    m_cleanClust_matchDR.clear();
+    m_cleanClust_matchPID.clear();
+    m_cleanClust_tagged.clear();
 
     m_ehit_x.clear();
     m_ehit_y.clear();

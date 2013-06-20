@@ -13,7 +13,7 @@
 //
 // Original Author:  Christopher Cowden
 //         Created:  Tue Feb  7 16:21:08 CST 2012
-// $Id: MonoNtupleDumper.cc,v 1.6 2013/06/08 04:24:43 cowden Exp $
+// $Id: MonoNtupleDumper.cc,v 1.7 2013/06/13 21:45:27 cowden Exp $
 //
 //
 
@@ -206,6 +206,19 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_egClust_tagged;
     std::vector<double> m_egClust_matchPID;
 
+    // Ecal hybrid clusters (cleaned collection)
+    unsigned m_nCleanEgamma;
+    std::vector<double> m_egClean_E;
+    std::vector<double> m_egClean_size;
+    std::vector<double> m_egClean_eta;
+    std::vector<double> m_egClean_phi;
+    std::vector<double> m_egClean_frac51;
+    std::vector<double> m_egClean_frac15;
+    std::vector<double> m_egClean_e55;
+    std::vector<double> m_egClean_eMax;
+    std::vector<double> m_egClean_matchDR;
+    std::vector<double> m_egClean_tagged;
+    std::vector<double> m_egClean_matchPID;
 
     // Ecal RecHits
     std::vector<double> m_ehit_eta;
@@ -517,7 +530,11 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   tagger.clearTags();
   if ( !m_isData && nbClusters ) tagger.tag(nbClusters,&(*bClusters)[0]);
 
+  unsigned nClusterCount=0;
   for ( unsigned i=0; i != nbClusters; i++ ) {
+    if ( (*bClusters)[i].energy() < 50. ) continue;
+
+    nClusterCount++;
     m_egClust_E.push_back( (*bClusters)[i].energy() );
     m_egClust_size.push_back( (*bClusters)[i].size() );
     m_egClust_eta.push_back( (*bClusters)[i].eta() );
@@ -538,8 +555,43 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
       m_egClust_matchPID.push_back(tagger.matchPID()[i]);
     }
   }
-  m_nClusterEgamma = nbClusters;
+  m_nClusterEgamma = nClusterCount;
 
+  // get BasicCluster Collection (cleaned)
+  Handle<BasicClusterCollection> cClusters;
+  edm::InputTag ccClusterTag("hybridSuperClusters","hybridBarrelBasicClusters"); 
+  iEvent.getByLabel(ccClusterTag,cClusters);
+  const unsigned ncClusters = cClusters->size();
+
+  tagger.clearTags();
+  if ( !m_isData && ncClusters ) tagger.tag(ncClusters,&(*cClusters)[0]);
+
+  nClusterCount=0;
+  for ( unsigned i=0; i != ncClusters; i++ ) {
+    if ( (*cClusters)[i].energy() < 50. ) continue;
+
+    nClusterCount++;
+    m_egClean_E.push_back( (*cClusters)[i].energy() );
+    m_egClean_size.push_back( (*cClusters)[i].size() );
+    m_egClean_eta.push_back( (*cClusters)[i].eta() );
+    m_egClean_phi.push_back( (*cClusters)[i].phi() );
+
+    const float e55 = ecalTool.e5x5((*cClusters)[i],ecalRecHits.product(),topology);
+    const float e51 = ecalTool.e5x1((*cClusters)[i],ecalRecHits.product(),topology);
+    const float e15 = ecalTool.e1x5((*cClusters)[i],ecalRecHits.product(),topology);
+    const float eMax = ecalTool.eMax((*cClusters)[i],ecalRecHits.product());
+    m_egClean_frac51.push_back( e51/e55 );
+    m_egClean_frac15.push_back( e15/e55 );
+    m_egClean_e55.push_back(e55);
+    m_egClean_eMax.push_back(eMax/e55);
+
+    if ( !m_isData ) {
+      m_egClean_matchDR.push_back(tagger.matchDR()[i]);
+      m_egClean_tagged.push_back(tagger.tagResult()[i]);
+      m_egClean_matchPID.push_back(tagger.matchPID()[i]);
+    }
+  }
+  m_nCleanEgamma = nClusterCount;
 
   ////////////////////////////////
   // Tracking analysis
@@ -695,7 +747,7 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("clust_Ecells",&m_clust_Ecells,"clust_Ecells[1500]/D");
   m_tree->Branch("clust_Tcells",&m_clust_Tcells,"clust_Tcells[1500]/D");
 
-  m_tree->Branch("egClust_N",&m_nClusterEgamma,"egClust_N/i");
+  m_tree->Branch("egClust_N",&m_nCleanEgamma,"egClust_N/i");
   m_tree->Branch("egClust_E",&m_egClust_E);
   m_tree->Branch("egClust_size",&m_egClust_size);
   m_tree->Branch("egClust_eta",&m_egClust_eta);
@@ -707,6 +759,19 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("egClust_matchDR",&m_egClust_matchDR);
   m_tree->Branch("egClust_matchPID",&m_egClust_matchPID);
   m_tree->Branch("egClust_tagged",&m_egClust_tagged);
+
+  m_tree->Branch("egClean_N",&m_nClusterEgamma,"egClean_N/i");
+  m_tree->Branch("egClean_E",&m_egClean_E);
+  m_tree->Branch("egClean_size",&m_egClean_size);
+  m_tree->Branch("egClean_eta",&m_egClean_eta);
+  m_tree->Branch("egClean_phi",&m_egClean_phi);
+  m_tree->Branch("egClean_frac51",&m_egClean_frac51);
+  m_tree->Branch("egClean_frac15",&m_egClean_frac15);
+  m_tree->Branch("egClean_e55",&m_egClean_e55);
+  m_tree->Branch("egClean_eMax",&m_egClean_eMax);
+  m_tree->Branch("egClean_matchDR",&m_egClean_matchDR);
+  m_tree->Branch("egClean_matchPID",&m_egClean_matchPID);
+  m_tree->Branch("egClean_tagged",&m_egClean_tagged);
 
   m_tree->Branch("ehit_eta",&m_ehit_eta);
   m_tree->Branch("ehit_phi",&m_ehit_phi);
@@ -845,6 +910,18 @@ void MonoNtupleDumper::clear()
     m_egClust_matchPID.clear();
     m_egClust_tagged.clear();
 
+    m_nCleanEgamma = 0;
+    m_egClean_E.clear();
+    m_egClean_size.clear();
+    m_egClean_eta.clear();
+    m_egClean_phi.clear();
+    m_egClean_frac51.clear();
+    m_egClean_frac15.clear();
+    m_egClean_e55.clear();
+    m_egClean_eMax.clear();
+    m_egClean_matchDR.clear();
+    m_egClean_matchPID.clear();
+    m_egClean_tagged.clear();
 
     // Ecal RecHits
     m_ehit_eta.clear();
