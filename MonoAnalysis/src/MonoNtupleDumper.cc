@@ -47,6 +47,7 @@
 #include "DataFormats/EgammaCandidates/interface/Electron.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/EgammaReco/interface/BasicCluster.h"
+#include "DataFormats/EgammaReco/interface/BasicClusterFwd.h"
 #include "DataFormats/METReco/interface/PFMET.h"
 
 
@@ -219,6 +220,20 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_egClean_matchDR;
     std::vector<double> m_egClean_tagged;
     std::vector<double> m_egClean_matchPID;
+
+    // Ecal hybrid clusters (combined collection)
+    unsigned m_nCombEgamma;
+    std::vector<double> m_egComb_E;
+    std::vector<double> m_egComb_size;
+    std::vector<double> m_egComb_eta;
+    std::vector<double> m_egComb_phi;
+    std::vector<double> m_egComb_frac51;
+    std::vector<double> m_egComb_frac15;
+    std::vector<double> m_egComb_e55;
+    std::vector<double> m_egComb_eMax;
+    std::vector<double> m_egComb_matchDR;
+    std::vector<double> m_egComb_tagged;
+    std::vector<double> m_egComb_matchPID;
 
     // Ecal RecHits
     std::vector<double> m_ehit_eta;
@@ -593,6 +608,42 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   }
   m_nCleanEgamma = nClusterCount;
 
+  // get BasicCluster Collection (combined)
+  Handle<reco::BasicClusterCollection> combClusters;
+  edm::InputTag combClusterTag("uncleanSCRecovered","uncleanHybridBarrelBasicClusters"); 
+  iEvent.getByLabel(combClusterTag,combClusters);
+  const unsigned ncombClusters = combClusters->size();
+
+  tagger.clearTags();
+  if ( !m_isData && ncombClusters ) tagger.tag(ncombClusters,&(*combClusters)[0]);
+
+  nClusterCount=0;
+  for ( unsigned i=0; i != ncombClusters; i++ ) {
+    if ( (*combClusters)[i].energy() < 50. ) continue;
+
+    nClusterCount++;
+    m_egComb_E.push_back( (*combClusters)[i].energy() );
+    m_egComb_size.push_back( (*combClusters)[i].size() );
+    m_egComb_eta.push_back( (*combClusters)[i].eta() );
+    m_egComb_phi.push_back( (*combClusters)[i].phi() );
+
+    const float e55 = ecalTool.e5x5((*combClusters)[i],ecalRecHits.product(),topology);
+    const float e51 = ecalTool.e5x1((*combClusters)[i],ecalRecHits.product(),topology);
+    const float e15 = ecalTool.e1x5((*combClusters)[i],ecalRecHits.product(),topology);
+    const float eMax = ecalTool.eMax((*combClusters)[i],ecalRecHits.product());
+    m_egComb_frac51.push_back( e51/e55 );
+    m_egComb_frac15.push_back( e15/e55 );
+    m_egComb_e55.push_back(e55);
+    m_egComb_eMax.push_back(eMax/e55);
+
+    if ( !m_isData ) {
+      m_egComb_matchDR.push_back(tagger.matchDR()[i]);
+      m_egComb_tagged.push_back(tagger.tagResult()[i]);
+      m_egComb_matchPID.push_back(tagger.matchPID()[i]);
+    }
+  }
+  m_nCombEgamma = nClusterCount;
+
   ////////////////////////////////
   // Tracking analysis
   _Tracker->analyze(iEvent, iSetup);
@@ -773,6 +824,19 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("egClean_matchPID",&m_egClean_matchPID);
   m_tree->Branch("egClean_tagged",&m_egClean_tagged);
 
+  m_tree->Branch("egComb_N",&m_nCombEgamma,"egComb_N/i");
+  m_tree->Branch("egComb_E",&m_egComb_E);
+  m_tree->Branch("egComb_size",&m_egComb_size);
+  m_tree->Branch("egComb_eta",&m_egComb_eta);
+  m_tree->Branch("egComb_phi",&m_egComb_phi);
+  m_tree->Branch("egComb_frac51",&m_egComb_frac51);
+  m_tree->Branch("egComb_frac15",&m_egComb_frac15);
+  m_tree->Branch("egComb_e55",&m_egComb_e55);
+  m_tree->Branch("egComb_eMax",&m_egComb_eMax);
+  m_tree->Branch("egComb_matchDR",&m_egComb_matchDR);
+  m_tree->Branch("egComb_matchPID",&m_egComb_matchPID);
+  m_tree->Branch("egComb_tagged",&m_egComb_tagged);
+
   m_tree->Branch("ehit_eta",&m_ehit_eta);
   m_tree->Branch("ehit_phi",&m_ehit_phi);
   m_tree->Branch("ehit_time",&m_ehit_time);
@@ -922,6 +986,19 @@ void MonoNtupleDumper::clear()
     m_egClean_matchDR.clear();
     m_egClean_matchPID.clear();
     m_egClean_tagged.clear();
+
+    m_nCombEgamma = 0;
+    m_egComb_E.clear();
+    m_egComb_size.clear();
+    m_egComb_eta.clear();
+    m_egComb_phi.clear();
+    m_egComb_frac51.clear();
+    m_egComb_frac15.clear();
+    m_egComb_e55.clear();
+    m_egComb_eMax.clear();
+    m_egComb_matchDR.clear();
+    m_egComb_matchPID.clear();
+    m_egComb_tagged.clear();
 
     // Ecal RecHits
     m_ehit_eta.clear();
