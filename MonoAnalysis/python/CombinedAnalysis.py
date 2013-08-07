@@ -4,6 +4,9 @@ process = cms.Process("Mpl")
 
 ### standard MessageLoggerConfiguration
 process.load("FWCore.MessageService.MessageLogger_cfi")
+process.MessageLogger.cerr.threshold = 'DEBUG'
+process.MessageLogger.categories.append('EcalCleaning')
+process.MessageLogger.cerr.DEBUG = cms.untracked.PSet( limit=cms.untracked.int32(-1) )
 
 ### Standard Configurations
 process.load("Configuration.StandardSequences.Services_cff")
@@ -39,6 +42,9 @@ process.source = cms.Source("PoolSource",
     #,skipEvents = cms.untracked.uint32(21)
 )
 
+### Construct combined (clean and uncleanOnly Ecal clusters)
+process.load("RecoEcal.EgammaClusterProducers.uncleanSCRecovery_cfi")
+
 import FWCore.PythonUtilities.LumiList as LumiList
 import FWCore.ParameterSet.Types as CfgTypes
 
@@ -63,13 +69,14 @@ process.Monopoler = cms.EDAnalyzer('MonoNtupleDumper'
 )
 
 
+process.ecalCombine_step = cms.Path(process.uncleanSCRecovered)
 process.refit_step = cms.Path(process.TrackRefitter)
 process.mpl_step = cms.Path(process.Monopoler)
 
 process.options = cms.untracked.PSet(     wantSummary = cms.untracked.bool(True) )
 
 
-process.p1 = cms.Schedule(process.refit_step,
+process.p1 = cms.Schedule(process.ecalCombine_step,process.refit_step,
 			process.mpl_step
 )
 #process.outpath = cms.EndPath(process.TRACKS)
