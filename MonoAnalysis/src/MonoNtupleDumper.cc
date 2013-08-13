@@ -235,6 +235,49 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_egComb_tagged;
     std::vector<double> m_egComb_matchPID;
 
+    // EE clusters (cleaned)
+    unsigned m_nCleanEE;
+    std::vector<double> m_eeClean_E;
+    std::vector<double> m_eeClean_size;
+    std::vector<double> m_eeClean_eta;
+    std::vector<double> m_eeClean_phi;
+    std::vector<double> m_eeClean_frac51;
+    std::vector<double> m_eeClean_frac15;
+    std::vector<double> m_eeClean_e55;
+    std::vector<double> m_eeClean_eMax;
+    std::vector<double> m_eeClean_matchDR;
+    std::vector<double> m_eeClean_tagged;
+    std::vector<double> m_eeClean_matchPID;
+
+    // EE clusters (uncleanOnly)
+    unsigned m_nUncleanEE;
+    std::vector<double> m_eeUnclean_E;
+    std::vector<double> m_eeUnclean_size;
+    std::vector<double> m_eeUnclean_eta;
+    std::vector<double> m_eeUnclean_phi;
+    std::vector<double> m_eeUnclean_frac51;
+    std::vector<double> m_eeUnclean_frac15;
+    std::vector<double> m_eeUnclean_e55;
+    std::vector<double> m_eeUnclean_eMax;
+    std::vector<double> m_eeUnclean_matchDR;
+    std::vector<double> m_eeUnclean_tagged;
+    std::vector<double> m_eeUnclean_matchPID;
+
+    // EE clusters (combined)
+    unsigned m_nCombEE;
+    std::vector<double> m_eeComb_E;
+    std::vector<double> m_eeComb_size;
+    std::vector<double> m_eeComb_eta;
+    std::vector<double> m_eeComb_phi;
+    std::vector<double> m_eeComb_frac51;
+    std::vector<double> m_eeComb_frac15;
+    std::vector<double> m_eeComb_e55;
+    std::vector<double> m_eeComb_eMax;
+    std::vector<double> m_eeComb_matchDR;
+    std::vector<double> m_eeComb_tagged;
+    std::vector<double> m_eeComb_matchPID;
+
+
     // Ecal RecHits
     std::vector<double> m_ehit_eta;
     std::vector<double> m_ehit_phi;
@@ -542,12 +585,16 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   std::vector<int> exclFlags;
   std::vector<int> sevExcl;
 
+  std::vector<const reco::CaloCluster *> ebUncleanClusters;
+
   tagger.clearTags();
   if ( !m_isData && nbClusters ) tagger.tag(nbClusters,&(*bClusters)[0]);
 
   unsigned nClusterCount=0;
   for ( unsigned i=0; i != nbClusters; i++ ) {
     if ( (*bClusters)[i].energy() < 50. ) continue;
+
+    ebUncleanClusters.push_back( &(*bClusters)[i] );
 
     nClusterCount++;
     m_egClust_E.push_back( (*bClusters)[i].energy() );
@@ -578,12 +625,16 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   iEvent.getByLabel(ccClusterTag,cClusters);
   const unsigned ncClusters = cClusters->size();
 
+  std::vector<const reco::CaloCluster *> ebCleanClusters;
+
   tagger.clearTags();
   if ( !m_isData && ncClusters ) tagger.tag(ncClusters,&(*cClusters)[0]);
 
   nClusterCount=0;
   for ( unsigned i=0; i != ncClusters; i++ ) {
     if ( (*cClusters)[i].energy() < 50. ) continue;
+
+    ebCleanClusters.push_back( &(*cClusters)[i] );
 
     nClusterCount++;
     m_egClean_E.push_back( (*cClusters)[i].energy() );
@@ -614,12 +665,16 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   iEvent.getByLabel(combClusterTag,combClusters);
   const unsigned ncombClusters = combClusters->size();
 
+  std::vector<const reco::CaloCluster *> ebClusters;
+
   tagger.clearTags();
   if ( !m_isData && ncombClusters ) tagger.tag(ncombClusters,&(*combClusters)[0]);
 
   nClusterCount=0;
   for ( unsigned i=0; i != ncombClusters; i++ ) {
     if ( (*combClusters)[i].energy() < 50. ) continue;
+
+    ebClusters.push_back( &(*combClusters)[i] );
 
     nClusterCount++;
     m_egComb_E.push_back( (*combClusters)[i].energy() );
@@ -644,11 +699,142 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   }
   m_nCombEgamma = nClusterCount;
 
+  //
+  // ------------- EE clusters ----------------------
+  // get basic clusters
+  Handle<BasicClusterCollection> eeClean;
+  edm::InputTag eeCleanTag("multi5x5SuperClusters","multi5x5EndcapBasicClusters"); 
+  iEvent.getByLabel(eeCleanTag,eeClean);
+  const unsigned nEECleanClusters = eeClean->size();
+
+  std::vector<const reco::CaloCluster *> eeCleanClusters;
+
+  tagger.clearTags();
+  if ( !m_isData && nEECleanClusters ) tagger.tag(nEECleanClusters,&(*eeClean)[0]);
+
+  nClusterCount=0;
+  for ( unsigned i=0; i != nEECleanClusters; i++ ) {
+    if ( (*eeClean)[i].energy() < 50. ) continue;
+
+    eeCleanClusters.push_back( &(*eeClean)[i] );
+
+    nClusterCount++;
+    m_eeClean_E.push_back( (*eeClean)[i].energy() );
+    m_eeClean_size.push_back( (*eeClean)[i].size() );
+    m_eeClean_eta.push_back( (*eeClean)[i].eta() );
+    m_eeClean_phi.push_back( (*eeClean)[i].phi() );
+
+    const float e55 = ecalTool.e5x5((*eeClean)[i],ecalRecHits.product(),topology);
+    const float e51 = ecalTool.e5x1((*eeClean)[i],ecalRecHits.product(),topology);
+    const float e15 = ecalTool.e1x5((*eeClean)[i],ecalRecHits.product(),topology);
+    const float eMax = ecalTool.eMax((*eeClean)[i],ecalRecHits.product());
+    m_eeClean_frac51.push_back( e51/e55 );
+    m_eeClean_frac15.push_back( e15/e55 );
+    m_eeClean_e55.push_back(e55);
+    m_eeClean_eMax.push_back(eMax/e55);
+
+    if ( !m_isData ) {
+      m_eeClean_matchDR.push_back(tagger.matchDR()[i]);
+      m_eeClean_tagged.push_back(tagger.tagResult()[i]);
+      m_eeClean_matchPID.push_back(tagger.matchPID()[i]);
+    }
+  }
+  m_nCleanEE = nClusterCount;
+
+  // unclean only clusters (EE)
+  Handle<BasicClusterCollection> eeUnclean;
+  edm::InputTag eeUncleanTag("multi5x5SuperClusters","uncleanOnlyMulti5x5EndcapBasicClusters"); 
+  iEvent.getByLabel(eeUncleanTag,eeUnclean);
+  const unsigned nEEUncleanClusters = eeUnclean->size();
+
+  std::vector<const reco::CaloCluster *> eeUncleanClusters;
+
+  tagger.clearTags();
+  if ( !m_isData && nEEUncleanClusters ) tagger.tag(nEEUncleanClusters,&(*eeUnclean)[0]);
+
+  nClusterCount=0;
+  for ( unsigned i=0; i != nEEUncleanClusters; i++ ) {
+    if ( (*eeUnclean)[i].energy() < 50. ) continue;
+
+    eeUncleanClusters.push_back( &(*eeUnclean)[i] );
+
+    nClusterCount++;
+    m_eeUnclean_E.push_back( (*eeUnclean)[i].energy() );
+    m_eeUnclean_size.push_back( (*eeUnclean)[i].size() );
+    m_eeUnclean_eta.push_back( (*eeUnclean)[i].eta() );
+    m_eeUnclean_phi.push_back( (*eeUnclean)[i].phi() );
+
+    const float e55 = ecalTool.e5x5((*eeUnclean)[i],ecalRecHits.product(),topology);
+    const float e51 = ecalTool.e5x1((*eeUnclean)[i],ecalRecHits.product(),topology);
+    const float e15 = ecalTool.e1x5((*eeUnclean)[i],ecalRecHits.product(),topology);
+    const float eMax = ecalTool.eMax((*eeUnclean)[i],ecalRecHits.product());
+    m_eeUnclean_frac51.push_back( e51/e55 );
+    m_eeUnclean_frac15.push_back( e15/e55 );
+    m_eeUnclean_e55.push_back(e55);
+    m_eeUnclean_eMax.push_back(eMax/e55);
+
+    if ( !m_isData ) {
+      m_eeUnclean_matchDR.push_back(tagger.matchDR()[i]);
+      m_eeUnclean_tagged.push_back(tagger.tagResult()[i]);
+      m_eeUnclean_matchPID.push_back(tagger.matchPID()[i]);
+    }
+  }
+  m_nUncleanEE = nClusterCount;
+
+  // combined EE clusters
+  Handle<BasicClusterCollection> eeComb;
+  edm::InputTag eeCombTag("uncleanEERecovered","uncleanEndcapBasicClusters"); 
+  iEvent.getByLabel(eeCombTag,eeComb);
+  const unsigned nEECombClusters = eeComb->size();
+
+  std::vector<const reco::CaloCluster *> eeCombClusters;
+
+  tagger.clearTags();
+  if ( !m_isData && nEECombClusters ) tagger.tag(nEECombClusters,&(*eeComb)[0]);
+
+  nClusterCount=0;
+  for ( unsigned i=0; i != nEECombClusters; i++ ) {
+    if ( (*eeComb)[i].energy() < 50. ) continue;
+
+    eeCombClusters.push_back( &(*eeComb)[i] );
+
+    nClusterCount++;
+    m_eeComb_E.push_back( (*eeComb)[i].energy() );
+    m_eeComb_size.push_back( (*eeComb)[i].size() );
+    m_eeComb_eta.push_back( (*eeComb)[i].eta() );
+    m_eeComb_phi.push_back( (*eeComb)[i].phi() );
+
+    const float e55 = ecalTool.e5x5((*eeComb)[i],ecalRecHits.product(),topology);
+    const float e51 = ecalTool.e5x1((*eeComb)[i],ecalRecHits.product(),topology);
+    const float e15 = ecalTool.e1x5((*eeComb)[i],ecalRecHits.product(),topology);
+    const float eMax = ecalTool.eMax((*eeComb)[i],ecalRecHits.product());
+    m_eeComb_frac51.push_back( e51/e55 );
+    m_eeComb_frac15.push_back( e15/e55 );
+    m_eeComb_e55.push_back(e55);
+    m_eeComb_eMax.push_back(eMax/e55);
+
+    if ( !m_isData ) {
+      m_eeComb_matchDR.push_back(tagger.matchDR()[i]);
+      m_eeComb_tagged.push_back(tagger.tagResult()[i]);
+      m_eeComb_matchPID.push_back(tagger.matchPID()[i]);
+    }
+  }
+  m_nCombEE = nClusterCount;
+  
+
+
+
   ////////////////////////////////
   // Tracking analysis
   _Tracker->analyze(iEvent, iSetup);
-  const Mono::MonoEcalCluster * clusters = clusterBuilder.clusters(); 
-  _Tracker->doMatch(m_nClusters,clusters,ebMap);
+  //const Mono::MonoEcalCluster * clusters = clusterBuilder.clusters(); 
+  //_Tracker->doMatch(m_nClusters,clusters,ebMap);
+  _Tracker->doMatch(m_nCombEgamma,&ebClusters[0],fEBCombined);
+  _Tracker->doMatch(m_nCleanEgamma,&ebCleanClusters[0],fEBClean);
+  _Tracker->doMatch(m_nClusterEgamma,&ebUncleanClusters[0],fEBUnclean);
+  _Tracker->doMatch(m_nCombEE,&eeCombClusters[0],fEECombined);
+  _Tracker->doMatch(m_nCleanEE,&eeCleanClusters[0],fEEClean);
+  _Tracker->doMatch(m_nUncleanEE,&eeUncleanClusters[0],fEEUnclean);
 
 
   // get jet collection
@@ -837,6 +1023,45 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("egComb_matchPID",&m_egComb_matchPID);
   m_tree->Branch("egComb_tagged",&m_egComb_tagged);
 
+  m_tree->Branch("eeClean_N",&m_nCleanEE,"eeClean_N/i");
+  m_tree->Branch("eeClean_E",&m_eeClean_E);
+  m_tree->Branch("eeClean_size",&m_eeClean_size);
+  m_tree->Branch("eeClean_eta",&m_eeClean_eta);
+  m_tree->Branch("eeClean_phi",&m_eeClean_phi);
+  m_tree->Branch("eeClean_frac51",&m_eeClean_frac51);
+  m_tree->Branch("eeClean_frac15",&m_eeClean_frac15);
+  m_tree->Branch("eeClean_eMax",&m_eeClean_eMax);
+  m_tree->Branch("eeClean_e55",&m_eeClean_e55);
+  m_tree->Branch("eeClean_matchDR",&m_eeClean_matchDR);
+  m_tree->Branch("eeClean_matchPID",&m_eeClean_matchPID);
+  m_tree->Branch("eeClean_tagged",&m_eeClean_tagged);
+
+  m_tree->Branch("eeUnclean_N",&m_nUncleanEE,"eeUnclean_N/i");
+  m_tree->Branch("eeUnclean_E",&m_eeUnclean_E);
+  m_tree->Branch("eeUnclean_size",&m_eeUnclean_size);
+  m_tree->Branch("eeUnclean_eta",&m_eeUnclean_eta);
+  m_tree->Branch("eeUnclean_phi",&m_eeUnclean_phi);
+  m_tree->Branch("eeUnclean_frac51",&m_eeUnclean_frac51);
+  m_tree->Branch("eeUnclean_frac15",&m_eeUnclean_frac15);
+  m_tree->Branch("eeUnclean_eMax",&m_eeUnclean_eMax);
+  m_tree->Branch("eeUnclean_e55",&m_eeUnclean_e55);
+  m_tree->Branch("eeUnclean_matchDR",&m_eeUnclean_matchDR);
+  m_tree->Branch("eeUnclean_matchPID",&m_eeUnclean_matchPID);
+  m_tree->Branch("eeUnclean_tagged",&m_eeUnclean_tagged);
+
+  m_tree->Branch("eeComb_N",&m_nCombEE,"eeComb_N/i");
+  m_tree->Branch("eeComb_E",&m_eeComb_E);
+  m_tree->Branch("eeComb_size",&m_eeComb_size);
+  m_tree->Branch("eeComb_eta",&m_eeComb_eta);
+  m_tree->Branch("eeComb_phi",&m_eeComb_phi);
+  m_tree->Branch("eeComb_frac51",&m_eeComb_frac51);
+  m_tree->Branch("eeComb_frac15",&m_eeComb_frac15);
+  m_tree->Branch("eeComb_eMax",&m_eeComb_eMax);
+  m_tree->Branch("eeComb_e55",&m_eeComb_e55);
+  m_tree->Branch("eeComb_matchDR",&m_eeComb_matchDR);
+  m_tree->Branch("eeComb_matchPID",&m_eeComb_matchPID);
+  m_tree->Branch("eeComb_tagged",&m_eeComb_tagged);
+
   m_tree->Branch("ehit_eta",&m_ehit_eta);
   m_tree->Branch("ehit_phi",&m_ehit_phi);
   m_tree->Branch("ehit_time",&m_ehit_time);
@@ -999,6 +1224,45 @@ void MonoNtupleDumper::clear()
     m_egComb_matchDR.clear();
     m_egComb_matchPID.clear();
     m_egComb_tagged.clear();
+
+    m_nCleanEE = 0;
+    m_eeClean_E.clear();
+    m_eeClean_size.clear();
+    m_eeClean_eta.clear();
+    m_eeClean_phi.clear();
+    m_eeClean_frac51.clear();
+    m_eeClean_frac15.clear();
+    m_eeClean_eMax.clear();
+    m_eeClean_e55.clear();
+    m_eeClean_matchDR.clear();
+    m_eeClean_matchPID.clear();
+    m_eeClean_tagged.clear();
+
+    m_nUncleanEE = 0;
+    m_eeUnclean_E.clear();
+    m_eeUnclean_size.clear();
+    m_eeUnclean_eta.clear();
+    m_eeUnclean_phi.clear();
+    m_eeUnclean_frac51.clear();
+    m_eeUnclean_frac15.clear();
+    m_eeUnclean_eMax.clear();
+    m_eeUnclean_e55.clear();
+    m_eeUnclean_matchDR.clear();
+    m_eeUnclean_matchPID.clear();
+    m_eeUnclean_tagged.clear();
+
+    m_nCombEE = 0;
+    m_eeComb_E.clear();
+    m_eeComb_size.clear();
+    m_eeComb_eta.clear();
+    m_eeComb_phi.clear();
+    m_eeComb_frac51.clear();
+    m_eeComb_frac15.clear();
+    m_eeComb_eMax.clear();
+    m_eeComb_e55.clear();
+    m_eeComb_matchDR.clear();
+    m_eeComb_matchPID.clear();
+    m_eeComb_tagged.clear();
 
     // Ecal RecHits
     m_ehit_eta.clear();
