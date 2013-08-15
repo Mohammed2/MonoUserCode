@@ -90,6 +90,7 @@ void MplTracker::beginJob(TTree *Tree=NULL){
   _Tree->Branch("Track_Ndof", &_vNdof);
 
   _Tree->Branch("Track_DeDx", &_vDeDx);
+  _Tree->Branch("Track_HighDeDx", &_vHighDeDx);
   _Tree->Branch("Track_Iso", &_vIso);
 
   _Tree->Branch("Track_clustMatch",&_clustMatch);
@@ -139,15 +140,15 @@ void MplTracker::analyze(const Event& event, const EventSetup& setup){
   if(_NormMap.size() == 0) Init(setup);
 
   event.getByLabel(_Source, _hTracks);
-  //event.getByLabel(_Source, _hTrajectories);
-  //event.getByLabel(_Source, _hTrajTrackAssociations);
+  event.getByLabel(_Source, _hTrajectories);
+  event.getByLabel(_Source, _hTrajTrackAssociations);
 
   //event.getByLabel("dedxHarmonic2", _hDeDx);
 
   _Used.clear();
   Clear();
 
-  // Loop over the trajectories
+  // Loop over the tracks
   for(uint i = 0; i!=_hTracks->size(); i++){
   //for(std::vector<Trajectory>::const_iterator Traj = _hTrajectories->begin(); Traj!=_hTrajectories->end(); Traj++){
 
@@ -211,6 +212,8 @@ void MplTracker::analyze(const Event& event, const EventSetup& setup){
     _Points.clear();
     _Errors.clear();
     _Charges.clear();
+    _SumHits.clear();
+    _HighHits.clear();
 
     AddPoints(*TrackRef);
 
@@ -291,6 +294,18 @@ void MplTracker::AddMoreTracks(vector<int> &Group){
 int MplTracker::AddPoints(const reco::Track &Track){
   int NPoints = 0;
 
+  // Find the right Trajectory
+  const Trajectory *Traj=NULL;
+  for(uint i=0; i < _hTrajectories->size(); i++){
+    edm::Ref<std::vector<Trajectory> > TrajRef(_hTrajectories, i);
+    edm::RefToBase<reco::Track> TrackRef ( (*_hTrajTrackAssociations.product())[TrajRef] );
+    if(TrackRef->pt() == Track.pt() && TrackRef->eta() == Track.eta() && TrackRef->phi() == Track.phi()){
+      Traj = TrajRef.get();
+      break;
+    }
+  }
+  if (Traj == NULL) cout << "Incoming!!!" << endl;
+
   for (trackingRecHit_iterator iHit=Track.recHitsBegin(); iHit!=Track.recHitsEnd(); iHit++){
     TrackingRecHitRef Ref = *iHit;
 
@@ -324,23 +339,40 @@ int MplTracker::AddPoints(const reco::Track &Track){
     }
 
     // add the dedx information: different accessor for every type of hit
-    //TrajectoryStateOnSurface State=Meas->updatedState();
-    ///LocalVector Direction = State.localDirection();
-    double cosine = 1.0; //Direction.z()/Direction.mag();
+    TrajectoryStateOnSurface State(Traj->geometricalInnermostState().globalParameters(), Detector->surface());
+    LocalVector Direction = State.localDirection();
+    double cosine = Direction.z()/Direction.mag();
     float Charge = 0;
+    int HighHits = 0, SumHits = 0;
 
     if(const SiStripMatchedRecHit2D* matchedHit=dynamic_cast<const SiStripMatchedRecHit2D*>(Hit)){
       const vector<uint8_t>& Ampls = DeDxTools::GetCluster(matchedHit->stereoHit())->amplitudes();
-      for(uint i=0; i<Ampls.size(); i++) Charge += Ampls[i];
+      SumHits += Ampls.size();
+      for(uint i=0; i<Ampls.size(); i++){
+	Charge += Ampls[i];
+	if(Ampls[i] >= 254) HighHits++;
+      }
     }else if(const ProjectedSiStripRecHit2D* projectedHit=dynamic_cast<const ProjectedSiStripRecHit2D*>(Hit)) {
       const vector<uint8_t>& Ampls = DeDxTools::GetCluster(&(projectedHit->originalHit()))->amplitudes();
-      for(uint i=0; i<Ampls.size(); i++) Charge += Ampls[i];
+      SumHits += Ampls.size();
+      for(uint i=0; i<Ampls.size(); i++){
+	Charge += Ampls[i];
+	if(Ampls[i] >= 254) HighHits++;
+      }
     }else if(const SiStripRecHit2D* singleHit=dynamic_cast<const SiStripRecHit2D*>(Hit)){
       const vector<uint8_t>& Ampls = DeDxTools::GetCluster(singleHit)->amplitudes();
-      for(uint i=0; i<Ampls.size(); i++) Charge += Ampls[i];
+      SumHits += Ampls.size();
+      for(uint i=0; i<Ampls.size(); i++){
+	Charge += Ampls[i];
+	if(Ampls[i] >= 254) HighHits++;
+      }
     }else if(const SiStripRecHit1D* single1DHit=dynamic_cast<const SiStripRecHit1D*>(Hit)){
       const vector<uint8_t>& Ampls = DeDxTools::GetCluster(single1DHit)->amplitudes();
-      for(uint i=0; i<Ampls.size(); i++) Charge += Ampls[i];
+      SumHits += Ampls.size();
+      for(uint i=0; i<Ampls.size(); i++){
+	Charge += Ampls[i];
+	if(Ampls[i] >= 254) HighHits++;
+      }
 // don't use pixels for now (since the standard algorithms don't use them)
     }else if(const SiPixelRecHit* pixelHit=dynamic_cast<const SiPixelRecHit*>(Hit)){ 
 //      Charge = pixelHit->cluster()->charge();
@@ -358,6 +390,8 @@ int MplTracker::AddPoints(const reco::Track &Track){
     }
 
     _Charges.push_back(NormCharge);
+    _SumHits.push_back(SumHits);
+    _HighHits.push_back(HighHits);
 
     NPoints++;
   }
@@ -372,6 +406,8 @@ void MplTracker::RemovePoints(int n){
     _Points.pop_back();
     _Errors.pop_back();
     _Charges.pop_back();
+    _SumHits.pop_back();
+    _HighHits.pop_back();
   }
 
   //cout << "Just Removed " << n << ".  Sizes: " << _Points.size() << " " << _Errors.size() << " " << _Charges.size() << endl;
@@ -398,6 +434,7 @@ void MplTracker::Clear(){
   _vNdof.clear();
 
   _vDeDx.clear();
+  _vHighDeDx.clear();
   _vIso.clear();
 
   _vTHTrack.clear();
@@ -446,7 +483,11 @@ void MplTracker::Save(vector<int> &Group){
   _vNdof.push_back(_Ndof);
 
   _vDeDx.push_back(_DeDx);
+  _vHighDeDx.push_back(_HighDeDx);
   _vIso.push_back(_Iso);
+
+  //for(uint i=0; i<_Charges.size(); i++)
+    //cout << "Charge: " << _Charges[i] << endl;
 }
 
 void MplTracker::FitXY(vector<int> &Group){
@@ -488,7 +529,7 @@ void MplTracker::FitXY(vector<int> &Group){
   //_XYFunc->SetParLimits(2, -XMax, XMax);
   TFitResultPtr Result = XYGraph.Fit(_XYFunc, "Q S B");
 
-  _XYPar[0] = Result->Parameter(0); // d0 (to first order)
+  _XYPar[0] = sqrt(pow(Result->Parameter(0)-Result->Parameter(2),2)+pow(Result->Parameter(1),2)) - fabs(Result->Parameter(2)); // unsigned d0
   _XYErr[0] = Result->ParError(0); // not correct right now
   _XYPar[1] = Phi0 - atan(Result->Parameter(1)/(Result->Parameter(2)-Result->Parameter(0))); // phi0
   _XYErr[1] = Result->ParError(1); // not correct right now
@@ -585,6 +626,15 @@ void MplTracker::FitDeDx(){
   sort(SortedCharges.begin(), SortedCharges.end());
 
   _DeDx = SortedCharges[SortedCharges.size()/2];
+
+  int SumHits = 0, HighHits = 0;
+
+  for(uint i=0; i<_SumHits.size(); i++){
+    SumHits += _SumHits[i];
+    HighHits += _HighHits[i];
+  }
+  _HighDeDx = (float)HighHits/SumHits;
+
 }
 
 void MplTracker::AverageIso(vector<int> &Group){
