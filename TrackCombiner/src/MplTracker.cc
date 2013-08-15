@@ -20,6 +20,8 @@
 #include "Geometry/TrackerGeometryBuilder/interface/PixelGeomDetUnit.h"
 #include "Geometry/Records/interface/GlobalTrackingGeometryRecord.h"
 
+#include "DataFormats/CaloRecHit/interface/CaloCluster.h"
+
 #include "RecoTracker/DeDx/interface/DeDxTools.h"
 
 #include "DataFormats/GeometryCommonDetAlgo/interface/ErrorFrameTransformer.h"
@@ -93,8 +95,20 @@ void MplTracker::beginJob(TTree *Tree=NULL){
   _Tree->Branch("Track_HighDeDx", &_vHighDeDx);
   _Tree->Branch("Track_Iso", &_vIso);
 
-  _Tree->Branch("Track_clustMatch",&_clustMatch);
-  _Tree->Branch("Track_clustDist",&_clustDist);
+  _Tree->Branch("Track_clustMatchEB",&_clustMatchEB);
+  _Tree->Branch("Track_clustDistEB",&_clustDistEB);
+  _Tree->Branch("Track_clustMatchEE",&_clustMatchEE);
+  _Tree->Branch("Track_clustDistEE",&_clustDistEE);
+
+  _Tree->Branch("Track_clustMatchEBClean",&_clustMatchEBClean);
+  _Tree->Branch("Track_clustDistEBClean",&_clustDistEBClean);
+  _Tree->Branch("Track_clustMatchEBUnclean",&_clustMatchEBUnclean);
+  _Tree->Branch("Track_clustDistEBUnclean",&_clustDistEBUnclean);
+
+  _Tree->Branch("Track_clustMatchEEClean",&_clustMatchEEClean);
+  _Tree->Branch("Track_clustDistEEClean",&_clustDistEEClean);
+  _Tree->Branch("Track_clustMatchEEUnclean",&_clustMatchEEUnclean);
+  _Tree->Branch("Track_clustDistEEUnclean",&_clustDistEEUnclean);
 
   if(_TrackHitOutput){
     _Tree->Branch("TrackHit_Track", &_vTHTrack);
@@ -445,8 +459,19 @@ void MplTracker::Clear(){
   _vTHErrY.clear();
   _vTHErrZ.clear();
 
-  _clustMatch.clear();
-  _clustDist.clear();
+  _clustMatchEB.clear();
+  _clustDistEB.clear();
+  _clustMatchEBClean.clear();
+  _clustDistEBClean.clear();
+  _clustMatchEBUnclean.clear();
+  _clustDistEBUnclean.clear();
+
+  _clustMatchEE.clear();
+  _clustDistEE.clear();
+  _clustMatchEEClean.clear();
+  _clustDistEEClean.clear();
+  _clustMatchEEUnclean.clear();
+  _clustDistEEUnclean.clear();
 }
 
 void MplTracker::Save(vector<int> &Group){
@@ -681,8 +706,34 @@ void MplTracker::doMatch(unsigned nClusters, const Mono::MonoEcalCluster *cluste
   this->getTracks(tracks);
 
   const unsigned nTracks = tracks.size();
-  matcher.match(nClusters,clusters,ecalMap,nTracks,&tracks[0],_clustMatch,_clustDist);
+  matcher.match(nClusters,clusters,ecalMap,nTracks,&tracks[0],_clustMatchEB,_clustDistEB);
  
 
 }
 
+
+
+void MplTracker::doMatch(unsigned nClusters, const reco::CaloCluster **clusters,const EcalClustID id=fEBCombined)
+{
+
+  Mono::MonoTrackMatcher matcher(50.);
+
+  std::vector<Mono::MonoTrack> tracks;
+  this->getTracks(tracks);
+
+  const unsigned nTracks = tracks.size();
+  if ( id == fEBCombined )
+    matcher.match(nClusters,clusters,nTracks,&tracks[0],_clustMatchEB,_clustDistEB,true);
+  else if ( id == fEBClean )
+    matcher.match(nClusters,clusters,nTracks,&tracks[0],_clustMatchEBClean,_clustDistEBClean,true);
+  else if ( id == fEBUnclean )
+    matcher.match(nClusters,clusters,nTracks,&tracks[0],_clustMatchEBUnclean,_clustDistEBUnclean,true);
+  else if ( id == fEECombined )
+    matcher.match(nClusters,clusters,nTracks,&tracks[0],_clustMatchEE,_clustDistEE,false);
+  else if ( id == fEEClean )
+    matcher.match(nClusters,clusters,nTracks,&tracks[0],_clustMatchEEClean,_clustDistEEClean,false);
+  else if ( id == fEEUnclean )
+    matcher.match(nClusters,clusters,nTracks,&tracks[0],_clustMatchEEUnclean,_clustDistEEUnclean,false);
+ 
+
+}

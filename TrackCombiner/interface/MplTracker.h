@@ -42,6 +42,19 @@ using namespace std;
 
 typedef std::vector<Trajectory> TrajectoryCollection;
 
+enum EcalClustID {
+  fEBClean=0,
+  fEBUnclean,
+  fEBCombined,
+  fEEClean,
+  fEEUnclean,
+  fEECombined
+};
+
+namespace reco {
+  class CaloCluster;
+}
+
 class MplTracker{
   public:
     MplTracker(const edm::ParameterSet&);
@@ -54,6 +67,7 @@ class MplTracker{
 
     void getTracks(std::vector<Mono::MonoTrack> &) const;
     void doMatch(unsigned,const Mono::MonoEcalCluster *,const Mono::EBmap &);
+    void doMatch(unsigned,const reco::CaloCluster **,const EcalClustID);
   private:
     int AddPoints(const reco::Track &Track);
     void RemovePoints(int n);
@@ -100,8 +114,18 @@ class MplTracker{
     TTree *_Tree;
     vector<float> _vXYPar0, _vXYPar1, _vXYPar2, _vXYErr0, _vXYErr1, _vXYErr2, _vRZPar0, _vRZPar1, _vRZPar2, _vRZErr0, _vRZErr1, _vRZErr2, _vChi2XY, _vChi2RZ, _vNdof, _vDeDx, _vHighDeDx, _vIso;
     vector<string> _vGroup;
-    vector<int> _clustMatch; // match to ecal cluster
-    vector<double> _clustDist; // distance to ecal cluster
+    vector<int> _clustMatchEB; // match to ecal cluster
+    vector<int> _clustMatchEBClean; // match to ecal cluster
+    vector<int> _clustMatchEBUnclean; // match to ecal cluster
+    vector<int> _clustMatchEE; // match to ecal cluster
+    vector<int> _clustMatchEEClean; // match to ecal cluster
+    vector<int> _clustMatchEEUnclean; // match to ecal cluster
+    vector<double> _clustDistEB; // distance to ecal cluster
+    vector<double> _clustDistEBClean; // distance to ecal cluster
+    vector<double> _clustDistEBUnclean; // distance to ecal cluster
+    vector<double> _clustDistEE; // distance to ecal cluster
+    vector<double> _clustDistEEClean; // distance to ecal cluster
+    vector<double> _clustDistEEUnclean; // distance to ecal cluster
 
     bool _TrackHitOutput;
     //TTree *_TrackHitTree;

@@ -13,6 +13,10 @@
 #include "Monopoles/MonoAlgorithms/interface/MonoTrack.h"
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalObs0.h"
 
+namespace reco {
+class CaloCluster;
+}
+
 namespace Mono {
 
 class MonoTrackMatcher {
@@ -30,6 +34,10 @@ public:
     ,unsigned nTracks, const MonoTrack *tracks
     ,std::vector<int> &matchMap, std::vector<double> &distances);
 
+  void match(unsigned nClusters, const reco::CaloCluster **clusters
+    ,unsigned nTracks, const MonoTrack *tracks
+    ,std::vector<int> &matchMap, std::vector<double> &distances
+    ,const bool isBarrel=true);
 
 
   class MatchInfo {
@@ -61,6 +69,7 @@ private:
   inline MonoTrackMatcher() { }
 
   static constexpr double s_ecalRad = 129.;
+  static constexpr double s_EEz = 3.144;
 
   double m_dRcut;
   
