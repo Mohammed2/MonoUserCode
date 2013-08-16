@@ -44,6 +44,19 @@ process.source = cms.Source("PoolSource",
 
 ### Construct combined (clean and uncleanOnly Ecal clusters)
 process.load("RecoEcal.EgammaClusterProducers.uncleanSCRecovery_cfi")
+process.uncleanEERecovered = cms.EDProducer('UncleanSCRecoveryProducer',
+
+            # input collections:
+            cleanBcCollection = cms.InputTag('multi5x5SuperClusters','multi5x5EndcapBasicClusters'),
+            cleanScCollection = cms.InputTag('multi5x5SuperClusters','multi5x5EndcapSuperClusters'),
+                                    
+            uncleanBcCollection = cms.InputTag('multi5x5SuperClusters','uncleanOnlyMulti5x5EndcapBasicClusters'),
+            uncleanScCollection = cms.InputTag('multi5x5SuperClusters','uncleanOnlyMulti5x5EndcapSuperClusters'),
+            # names of collections to be produced:
+            bcCollection = cms.string('uncleanEndcapBasicClusters'),
+            scCollection = cms.string('uncleanEndcapSuperClusters'),
+
+            )
 
 import FWCore.PythonUtilities.LumiList as LumiList
 import FWCore.ParameterSet.Types as CfgTypes
@@ -70,13 +83,14 @@ process.Monopoler = cms.EDAnalyzer('MonoNtupleDumper'
 
 
 process.ecalCombine_step = cms.Path(process.uncleanSCRecovered)
+process.ecalCombineEE_step = cms.Path(process.uncleanEERecovered)
 process.refit_step = cms.Path(process.TrackRefitter)
 process.mpl_step = cms.Path(process.Monopoler)
 
 process.options = cms.untracked.PSet(     wantSummary = cms.untracked.bool(True) )
 
 
-process.p1 = cms.Schedule(process.ecalCombine_step,process.refit_step,
+process.p1 = cms.Schedule(process.ecalCombine_step,process.ecalCombineEE_step,process.refit_step,
 			process.mpl_step
 )
 #process.outpath = cms.EndPath(process.TRACKS)
