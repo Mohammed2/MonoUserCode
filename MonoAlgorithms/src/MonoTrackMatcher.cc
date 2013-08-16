@@ -52,7 +52,7 @@ void MonoTrackMatcher::match(const unsigned nClusters, const MonoEcalCluster *cl
       if ( teta != teta ) continue;
       if ( teta == myInf || teta == -myInf ) continue;
 
-      const double dR = reco::deltaR(cphi,ceta,teta,tphi);
+      const double dR = reco::deltaR(ceta,cphi,teta,tphi);
       matchInfoMap[c*nTracks+t] = MatchInfo(dR,c,t);  
 
       assert(matchInfoMap[c*nTracks+t].getic()<nClusters);

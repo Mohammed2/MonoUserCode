@@ -146,6 +146,8 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
 
     TTree * m_tree;
 
+    bool _ClustHitOutput, _EleJetPhoOutput;
+
     // Event information
     unsigned m_run;
     unsigned m_lumi;
@@ -360,6 +362,8 @@ MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
   ,m_output(iConfig.getParameter<std::string>("Output"))
 {
   _Tracker = new MplTracker(iConfig);
+  _ClustHitOutput = iConfig.getUntrackedParameter<bool>("ClustHitOutput", true);
+  _EleJetPhoOutput = iConfig.getUntrackedParameter<bool>("EleJetPhoOutput", true);
 }
 
 
@@ -981,8 +985,10 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("clust_hsInSeed",&m_clust_hsInSeed);
   m_tree->Branch("clust_hsWeird",&m_clust_hsWeird);
   m_tree->Branch("clust_hsDiWeird",&m_clust_hsDiWeird);
-  m_tree->Branch("clust_Ecells",&m_clust_Ecells,"clust_Ecells[1500]/D");
-  m_tree->Branch("clust_Tcells",&m_clust_Tcells,"clust_Tcells[1500]/D");
+  if(_ClustHitOutput){
+    m_tree->Branch("clust_Ecells",&m_clust_Ecells,"clust_Ecells[1500]/D");
+    m_tree->Branch("clust_Tcells",&m_clust_Tcells,"clust_Tcells[1500]/D");
+  }
 
   m_tree->Branch("egClust_N",&m_nCleanEgamma,"egClust_N/i");
   m_tree->Branch("egClust_E",&m_egClust_E);
@@ -1062,16 +1068,19 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("eeComb_matchPID",&m_eeComb_matchPID);
   m_tree->Branch("eeComb_tagged",&m_eeComb_tagged);
 
-  m_tree->Branch("ehit_eta",&m_ehit_eta);
-  m_tree->Branch("ehit_phi",&m_ehit_phi);
-  m_tree->Branch("ehit_time",&m_ehit_time);
-  m_tree->Branch("ehit_E",&m_ehit_energy);
-  m_tree->Branch("ehit_kWeird",&m_ehit_kWeird);
-  m_tree->Branch("ehit_kDiWeird",&m_ehit_kDiWeird);
-  m_tree->Branch("ehit_flag",&m_ehit_flag);
+  if(_ClustHitOutput){
+    m_tree->Branch("ehit_eta",&m_ehit_eta);
+    m_tree->Branch("ehit_phi",&m_ehit_phi);
+    m_tree->Branch("ehit_time",&m_ehit_time);
+    m_tree->Branch("ehit_E",&m_ehit_energy);
+    m_tree->Branch("ehit_kWeird",&m_ehit_kWeird);
+    m_tree->Branch("ehit_kDiWeird",&m_ehit_kDiWeird);
+    m_tree->Branch("ehit_flag",&m_ehit_flag);
+  }
 
   _Tracker->beginJob(m_tree);
 
+  if(_EleJetPhoOutput){
   m_tree->Branch("jet_N",&m_jet_N,"jet_N/i");
   m_tree->Branch("jet_E",&m_jet_E);
   m_tree->Branch("jet_p",&m_jet_p);
@@ -1111,6 +1120,7 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("ele_matchDR",&m_ele_matchDR);
   m_tree->Branch("ele_tagged",&m_ele_tagged);
   m_tree->Branch("ele_matchPID",&m_ele_matchPID);
+  }
 
   m_tree->Branch("mpt_pt",&m_mpt,"mpt_pt/D");
   m_tree->Branch("mpt_phi",&m_mpPhi,"mpt_phi/D");
