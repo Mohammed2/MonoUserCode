@@ -119,6 +119,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
 
     // input tags
     edm::InputTag m_TagEcalEB_RecHits;
+    edm::InputTag m_TagEcalEE_RecHits;
     edm::InputTag m_Tag_Jets;
     edm::InputTag m_Tag_Photons;
     edm::InputTag m_Tag_Electrons;
@@ -353,6 +354,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
 //
 MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
   :m_TagEcalEB_RecHits(iConfig.getParameter<edm::InputTag>("EcalEBRecHits") )
+  ,m_TagEcalEE_RecHits(iConfig.getParameter<edm::InputTag>("EcalEERecHits") )
   ,m_Tag_Jets(iConfig.getParameter<edm::InputTag>("JetTag") )
   ,m_Tag_Photons(iConfig.getParameter<edm::InputTag>("PhotonTag") )
   ,m_Tag_Electrons(iConfig.getParameter<edm::InputTag>("ElectronTag") )
@@ -548,6 +550,11 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   iEvent.getByLabel(m_TagEcalEB_RecHits,ecalRecHits);
   assert( ecalRecHits->size() > 0 );
 
+  // get EE RecHit collection
+  Handle<EERecHitCollection > eeRecHits;
+  iEvent.getByLabel(m_TagEcalEE_RecHits,eeRecHits);
+  assert( eeRecHits->size() > 0 );
+
 
   // get calo geometry and topology
   ESHandle<CaloGeometry> calo;
@@ -728,10 +735,10 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_eeClean_eta.push_back( (*eeClean)[i].eta() );
     m_eeClean_phi.push_back( (*eeClean)[i].phi() );
 
-    const float e55 = ecalTool.e5x5((*eeClean)[i],ecalRecHits.product(),topology);
-    const float e51 = ecalTool.e5x1((*eeClean)[i],ecalRecHits.product(),topology);
-    const float e15 = ecalTool.e1x5((*eeClean)[i],ecalRecHits.product(),topology);
-    const float eMax = ecalTool.eMax((*eeClean)[i],ecalRecHits.product());
+    const float e55 = ecalTool.e5x5((*eeClean)[i],eeRecHits.product(),topology);
+    const float e51 = ecalTool.e5x1((*eeClean)[i],eeRecHits.product(),topology);
+    const float e15 = ecalTool.e1x5((*eeClean)[i],eeRecHits.product(),topology);
+    const float eMax = ecalTool.eMax((*eeClean)[i],eeRecHits.product());
     m_eeClean_frac51.push_back( e51/e55 );
     m_eeClean_frac15.push_back( e15/e55 );
     m_eeClean_e55.push_back(e55);
@@ -768,10 +775,10 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_eeUnclean_eta.push_back( (*eeUnclean)[i].eta() );
     m_eeUnclean_phi.push_back( (*eeUnclean)[i].phi() );
 
-    const float e55 = ecalTool.e5x5((*eeUnclean)[i],ecalRecHits.product(),topology);
-    const float e51 = ecalTool.e5x1((*eeUnclean)[i],ecalRecHits.product(),topology);
-    const float e15 = ecalTool.e1x5((*eeUnclean)[i],ecalRecHits.product(),topology);
-    const float eMax = ecalTool.eMax((*eeUnclean)[i],ecalRecHits.product());
+    const float e55 = ecalTool.e5x5((*eeUnclean)[i],eeRecHits.product(),topology);
+    const float e51 = ecalTool.e5x1((*eeUnclean)[i],eeRecHits.product(),topology);
+    const float e15 = ecalTool.e1x5((*eeUnclean)[i],eeRecHits.product(),topology);
+    const float eMax = ecalTool.eMax((*eeUnclean)[i],eeRecHits.product());
     m_eeUnclean_frac51.push_back( e51/e55 );
     m_eeUnclean_frac15.push_back( e15/e55 );
     m_eeUnclean_e55.push_back(e55);
@@ -808,10 +815,10 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_eeComb_eta.push_back( (*eeComb)[i].eta() );
     m_eeComb_phi.push_back( (*eeComb)[i].phi() );
 
-    const float e55 = ecalTool.e5x5((*eeComb)[i],ecalRecHits.product(),topology);
-    const float e51 = ecalTool.e5x1((*eeComb)[i],ecalRecHits.product(),topology);
-    const float e15 = ecalTool.e1x5((*eeComb)[i],ecalRecHits.product(),topology);
-    const float eMax = ecalTool.eMax((*eeComb)[i],ecalRecHits.product());
+    const float e55 = ecalTool.e5x5((*eeComb)[i],eeRecHits.product(),topology);
+    const float e51 = ecalTool.e5x1((*eeComb)[i],eeRecHits.product(),topology);
+    const float e15 = ecalTool.e1x5((*eeComb)[i],eeRecHits.product(),topology);
+    const float eMax = ecalTool.eMax((*eeComb)[i],eeRecHits.product());
     m_eeComb_frac51.push_back( e51/e55 );
     m_eeComb_frac15.push_back( e15/e55 );
     m_eeComb_e55.push_back(e55);
