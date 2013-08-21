@@ -92,7 +92,8 @@ void MplTracker::beginJob(TTree *Tree=NULL){
   _Tree->Branch("Track_Ndof", &_vNdof);
 
   _Tree->Branch("Track_DeDx", &_vDeDx);
-  _Tree->Branch("Track_HighDeDx", &_vHighDeDx);
+  _Tree->Branch("Track_HighDeDx1", &_vHighDeDx1);
+  _Tree->Branch("Track_HighDeDx2", &_vHighDeDx2);
   _Tree->Branch("Track_Iso", &_vIso);
 
   _Tree->Branch("Track_clustMatchEB",&_clustMatchEB);
@@ -448,7 +449,8 @@ void MplTracker::Clear(){
   _vNdof.clear();
 
   _vDeDx.clear();
-  _vHighDeDx.clear();
+  _vHighDeDx1.clear();
+  _vHighDeDx2.clear();
   _vIso.clear();
 
   _vTHTrack.clear();
@@ -508,7 +510,8 @@ void MplTracker::Save(vector<int> &Group){
   _vNdof.push_back(_Ndof);
 
   _vDeDx.push_back(_DeDx);
-  _vHighDeDx.push_back(_HighDeDx);
+  _vHighDeDx1.push_back(_HighDeDx1);
+  _vHighDeDx2.push_back(_HighDeDx2);
   _vIso.push_back(_Iso);
 
   //for(uint i=0; i<_Charges.size(); i++)
@@ -652,13 +655,16 @@ void MplTracker::FitDeDx(){
 
   _DeDx = SortedCharges[SortedCharges.size()/2];
 
-  int SumHits = 0, HighHits = 0;
+  int SumHits1 = 0, SumHits2=0, HighHits1 = 0, HighHits2=0;
 
   for(uint i=0; i<_SumHits.size(); i++){
-    SumHits += _SumHits[i];
-    HighHits += _HighHits[i];
+    SumHits1 += _SumHits[i];
+    HighHits1 += _HighHits[i];
+    SumHits2++;
+    if(_HighHits[i]>0) HighHits2++;
   }
-  _HighDeDx = (float)HighHits/SumHits;
+  _HighDeDx1 = (float)HighHits1/SumHits1;
+  _HighDeDx2 = (float)HighHits2/SumHits2;
 
 }
 
