@@ -5,6 +5,7 @@
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/Common/interface/Handle.h"
+#include "DataFormats/Math/interface/deltaR.h"
 
 #include "FWCore/Framework/interface/EventSetup.h"
 
@@ -680,7 +681,8 @@ void MplTracker::AverageIso(vector<int> &Group){
 
     edm::Ref<std::vector<reco::Track> > ThisTrack(_hTracks, i);
 
-    float dR2 = pow(ThisTrack->eta() - InitEta, 2) + pow(ThisTrack->phi() - InitPhi, 2);
+    //float dR2 = pow(ThisTrack->eta() - InitEta, 2) + pow(ThisTrack->phi() - InitPhi, 2);
+    float dR2 = reco::deltaR(ThisTrack->eta(), ThisTrack->phi(), InitEta, InitPhi);
 
     if(dR2 > .16) continue; // dR cut of 0.4
 
