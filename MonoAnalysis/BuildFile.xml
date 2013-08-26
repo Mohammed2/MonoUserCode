@@ -12,5 +12,6 @@
 <use name="RecoEcal/EgammaCoreTools"/>
 <use name="Monopoles/MonoAlgorithms"/>
 <use name="Monopoles/TrackCombiner"/>
+<use name="RecoEgamma/EgammaIsolationAlgos"/>
 <use name="root"/>
 <flags EDM_PLUGIN="1"/>

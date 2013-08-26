@@ -59,6 +59,10 @@
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
 #include "DataFormats/EcalDetId/interface/EBDetId.h"
 #include "RecoEcal/EgammaCoreTools/interface/EcalClusterTools.h"
+#include "RecoEgamma/EgammaIsolationAlgos/interface/EgammaHcalIsolation.h"
+
+// Hcal includes
+#include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
 
 
 // Monopole analysis includes
@@ -120,6 +124,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     // input tags
     edm::InputTag m_TagEcalEB_RecHits;
     edm::InputTag m_TagEcalEE_RecHits;
+    edm::InputTag m_TagHcalHBHE_RecHits;
     edm::InputTag m_Tag_Jets;
     edm::InputTag m_Tag_Photons;
     edm::InputTag m_Tag_Electrons;
@@ -209,6 +214,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_egClust_matchDR;
     std::vector<double> m_egClust_tagged;
     std::vector<double> m_egClust_matchPID;
+    std::vector<double> m_egClust_hcalIso;
 
     // Ecal hybrid clusters (cleaned collection)
     unsigned m_nCleanEgamma;
@@ -223,6 +229,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_egClean_matchDR;
     std::vector<double> m_egClean_tagged;
     std::vector<double> m_egClean_matchPID;
+    std::vector<double> m_egClean_hcalIso;
 
     // Ecal hybrid clusters (combined collection)
     unsigned m_nCombEgamma;
@@ -237,6 +244,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_egComb_matchDR;
     std::vector<double> m_egComb_tagged;
     std::vector<double> m_egComb_matchPID;
+    std::vector<double> m_egComb_hcalIso;
 
     // EE clusters (cleaned)
     unsigned m_nCleanEE;
@@ -251,6 +259,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_eeClean_matchDR;
     std::vector<double> m_eeClean_tagged;
     std::vector<double> m_eeClean_matchPID;
+    std::vector<double> m_eeClean_hcalIso;
 
     // EE clusters (uncleanOnly)
     unsigned m_nUncleanEE;
@@ -265,6 +274,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_eeUnclean_matchDR;
     std::vector<double> m_eeUnclean_tagged;
     std::vector<double> m_eeUnclean_matchPID;
+    std::vector<double> m_eeUnclean_hcalIso;
 
     // EE clusters (combined)
     unsigned m_nCombEE;
@@ -279,6 +289,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_eeComb_matchDR;
     std::vector<double> m_eeComb_tagged;
     std::vector<double> m_eeComb_matchPID;
+    std::vector<double> m_eeComb_hcalIso;
 
 
     // Ecal RecHits
@@ -355,6 +366,7 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
 MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
   :m_TagEcalEB_RecHits(iConfig.getParameter<edm::InputTag>("EcalEBRecHits") )
   ,m_TagEcalEE_RecHits(iConfig.getParameter<edm::InputTag>("EcalEERecHits") )
+  ,m_TagHcalHBHE_RecHits(iConfig.getParameter<edm::InputTag>("HBHERecHits") )
   ,m_Tag_Jets(iConfig.getParameter<edm::InputTag>("JetTag") )
   ,m_Tag_Photons(iConfig.getParameter<edm::InputTag>("PhotonTag") )
   ,m_Tag_Electrons(iConfig.getParameter<edm::InputTag>("ElectronTag") )
@@ -555,6 +567,11 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   iEvent.getByLabel(m_TagEcalEE_RecHits,eeRecHits);
   assert( eeRecHits->size() > 0 );
 
+  // get HB RecHit Collection
+  Handle<HBHERecHitCollection> hbRecHits;
+  iEvent.getByLabel(m_TagHcalHBHE_RecHits,hbRecHits);
+  assert( hbRecHits->size() > 0 );
+
 
   // get calo geometry and topology
   ESHandle<CaloGeometry> calo;
@@ -565,6 +582,11 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   ESHandle<CaloTopology> topo;
   iSetup.get<CaloTopologyRecord>().get(topo);
   const CaloTopology * topology = (const CaloTopology*)topo.product();
+
+  // get HE geometry and topology
+  // get HB geometry and topology
+  HBHERecHitMetaCollection mhbrh(hbRecHits.product());
+  EgammaHcalIsolation egIso(0.4,0.1,10.,10.,10.,10.,calo,&mhbrh);
 
   // fill RecHit branches
   EBRecHitCollection::const_iterator itHit = ecalRecHits->begin();
@@ -621,6 +643,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_egClust_frac15.push_back( e15/e55 );
     m_egClust_e55.push_back(e55);
     m_egClust_eMax.push_back(eMax/e55);
+    m_egClust_hcalIso.push_back( egIso.getHcalESum((*bClusters)[i].position()) );
 
     if ( !m_isData ) {
       m_egClust_matchDR.push_back(tagger.matchDR()[i]);
@@ -661,6 +684,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_egClean_frac15.push_back( e15/e55 );
     m_egClean_e55.push_back(e55);
     m_egClean_eMax.push_back(eMax/e55);
+    m_egClean_hcalIso.push_back( egIso.getHcalESum((*cClusters)[i].position()) );
 
     if ( !m_isData ) {
       m_egClean_matchDR.push_back(tagger.matchDR()[i]);
@@ -701,6 +725,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_egComb_frac15.push_back( e15/e55 );
     m_egComb_e55.push_back(e55);
     m_egComb_eMax.push_back(eMax/e55);
+    m_egComb_hcalIso.push_back( egIso.getHcalESum((*combClusters)[i].position()) );
 
     if ( !m_isData ) {
       m_egComb_matchDR.push_back(tagger.matchDR()[i]);
@@ -743,6 +768,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_eeClean_frac15.push_back( e15/e55 );
     m_eeClean_e55.push_back(e55);
     m_eeClean_eMax.push_back(eMax/e55);
+    m_eeClean_hcalIso.push_back( egIso.getHcalESum((*eeClean)[i].position()) );
 
     if ( !m_isData ) {
       m_eeClean_matchDR.push_back(tagger.matchDR()[i]);
@@ -783,6 +809,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_eeUnclean_frac15.push_back( e15/e55 );
     m_eeUnclean_e55.push_back(e55);
     m_eeUnclean_eMax.push_back(eMax/e55);
+    m_eeUnclean_hcalIso.push_back( egIso.getHcalESum((*eeUnclean)[i].position()) );
 
     if ( !m_isData ) {
       m_eeUnclean_matchDR.push_back(tagger.matchDR()[i]);
@@ -823,6 +850,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_eeComb_frac15.push_back( e15/e55 );
     m_eeComb_e55.push_back(e55);
     m_eeComb_eMax.push_back(eMax/e55);
+    m_eeComb_hcalIso.push_back( egIso.getHcalESum((*eeComb)[i].position()) );
 
     if ( !m_isData ) {
       m_eeComb_matchDR.push_back(tagger.matchDR()[i]);
@@ -1009,6 +1037,7 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("egClust_matchDR",&m_egClust_matchDR);
   m_tree->Branch("egClust_matchPID",&m_egClust_matchPID);
   m_tree->Branch("egClust_tagged",&m_egClust_tagged);
+  m_tree->Branch("egClust_hcalIso",&m_egClust_hcalIso);
 
   m_tree->Branch("egClean_N",&m_nClusterEgamma,"egClean_N/i");
   m_tree->Branch("egClean_E",&m_egClean_E);
@@ -1022,6 +1051,7 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("egClean_matchDR",&m_egClean_matchDR);
   m_tree->Branch("egClean_matchPID",&m_egClean_matchPID);
   m_tree->Branch("egClean_tagged",&m_egClean_tagged);
+  m_tree->Branch("egClean_hcalIso",&m_egClean_hcalIso);
 
   m_tree->Branch("egComb_N",&m_nCombEgamma,"egComb_N/i");
   m_tree->Branch("egComb_E",&m_egComb_E);
@@ -1035,6 +1065,7 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("egComb_matchDR",&m_egComb_matchDR);
   m_tree->Branch("egComb_matchPID",&m_egComb_matchPID);
   m_tree->Branch("egComb_tagged",&m_egComb_tagged);
+  m_tree->Branch("egComb_hcalIso",&m_egComb_hcalIso);
 
   m_tree->Branch("eeClean_N",&m_nCleanEE,"eeClean_N/i");
   m_tree->Branch("eeClean_E",&m_eeClean_E);
@@ -1048,6 +1079,7 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("eeClean_matchDR",&m_eeClean_matchDR);
   m_tree->Branch("eeClean_matchPID",&m_eeClean_matchPID);
   m_tree->Branch("eeClean_tagged",&m_eeClean_tagged);
+  m_tree->Branch("eeClean_hcalIso",&m_eeClean_hcalIso);
 
   m_tree->Branch("eeUnclean_N",&m_nUncleanEE,"eeUnclean_N/i");
   m_tree->Branch("eeUnclean_E",&m_eeUnclean_E);
@@ -1061,6 +1093,7 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("eeUnclean_matchDR",&m_eeUnclean_matchDR);
   m_tree->Branch("eeUnclean_matchPID",&m_eeUnclean_matchPID);
   m_tree->Branch("eeUnclean_tagged",&m_eeUnclean_tagged);
+  m_tree->Branch("eeUnclean_hcalIso",&m_eeUnclean_hcalIso);
 
   m_tree->Branch("eeComb_N",&m_nCombEE,"eeComb_N/i");
   m_tree->Branch("eeComb_E",&m_eeComb_E);
@@ -1074,6 +1107,7 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("eeComb_matchDR",&m_eeComb_matchDR);
   m_tree->Branch("eeComb_matchPID",&m_eeComb_matchPID);
   m_tree->Branch("eeComb_tagged",&m_eeComb_tagged);
+  m_tree->Branch("eeComb_hcalIso",&m_eeComb_hcalIso);
 
   if(_ClustHitOutput){
     m_tree->Branch("ehit_eta",&m_ehit_eta);
@@ -1215,6 +1249,7 @@ void MonoNtupleDumper::clear()
     m_egClust_matchDR.clear();
     m_egClust_matchPID.clear();
     m_egClust_tagged.clear();
+    m_egClust_hcalIso.clear();
 
     m_nCleanEgamma = 0;
     m_egClean_E.clear();
@@ -1228,6 +1263,7 @@ void MonoNtupleDumper::clear()
     m_egClean_matchDR.clear();
     m_egClean_matchPID.clear();
     m_egClean_tagged.clear();
+    m_egClean_hcalIso.clear();
 
     m_nCombEgamma = 0;
     m_egComb_E.clear();
@@ -1241,6 +1277,7 @@ void MonoNtupleDumper::clear()
     m_egComb_matchDR.clear();
     m_egComb_matchPID.clear();
     m_egComb_tagged.clear();
+    m_egComb_hcalIso.clear();
 
     m_nCleanEE = 0;
     m_eeClean_E.clear();
@@ -1254,6 +1291,7 @@ void MonoNtupleDumper::clear()
     m_eeClean_matchDR.clear();
     m_eeClean_matchPID.clear();
     m_eeClean_tagged.clear();
+    m_eeClean_hcalIso.clear();
 
     m_nUncleanEE = 0;
     m_eeUnclean_E.clear();
@@ -1267,6 +1305,7 @@ void MonoNtupleDumper::clear()
     m_eeUnclean_matchDR.clear();
     m_eeUnclean_matchPID.clear();
     m_eeUnclean_tagged.clear();
+    m_eeUnclean_hcalIso.clear();
 
     m_nCombEE = 0;
     m_eeComb_E.clear();
@@ -1280,6 +1319,7 @@ void MonoNtupleDumper::clear()
     m_eeComb_matchDR.clear();
     m_eeComb_matchPID.clear();
     m_eeComb_tagged.clear();
+    m_eeComb_hcalIso.clear();
 
     // Ecal RecHits
     m_ehit_eta.clear();

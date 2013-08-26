@@ -66,6 +66,7 @@ process.Monopoler = cms.EDAnalyzer('MonoNtupleDumper'
   ,Output = cms.string("Combined.test.root")
   ,EcalEBRecHits = cms.InputTag("ecalRecHit","EcalRecHitsEB") 
   ,EcalEERecHits = cms.InputTag("ecalRecHit","EcalRecHitsEE") 
+  ,HBHERecHits = cms.InputTag("hbhereco","")
   ,JetTag = cms.InputTag("ak5PFJets","")
   ,ElectronTag = cms.InputTag("gsfElectrons","")
   ,PhotonTag = cms.InputTag("photons","")
