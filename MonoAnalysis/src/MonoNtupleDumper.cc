@@ -241,6 +241,8 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_egComb_frac15;
     std::vector<double> m_egComb_e55;
     std::vector<double> m_egComb_eMax;
+    std::vector<double> m_egComb_e25Right;
+    std::vector<double> m_egComb_e25Left;
     std::vector<double> m_egComb_matchDR;
     std::vector<double> m_egComb_tagged;
     std::vector<double> m_egComb_matchPID;
@@ -286,6 +288,8 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_eeComb_frac15;
     std::vector<double> m_eeComb_e55;
     std::vector<double> m_eeComb_eMax;
+    std::vector<double> m_eeComb_e25Left;
+    std::vector<double> m_eeComb_e25Right;
     std::vector<double> m_eeComb_matchDR;
     std::vector<double> m_eeComb_tagged;
     std::vector<double> m_eeComb_matchPID;
@@ -725,6 +729,8 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_egComb_frac15.push_back( e15/e55 );
     m_egComb_e55.push_back(e55);
     m_egComb_eMax.push_back(eMax/e55);
+    m_egComb_e25Right.push_back(ecalTool.e2x5Right((*combClusters)[i],ecalRecHits.product(),topology));
+    m_egComb_e25Left.push_back(ecalTool.e2x5Left((*combClusters)[i],ecalRecHits.product(),topology));
     m_egComb_hcalIso.push_back( egIso.getHcalESum((*combClusters)[i].position()) );
 
     if ( !m_isData ) {
@@ -850,6 +856,8 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_eeComb_frac15.push_back( e15/e55 );
     m_eeComb_e55.push_back(e55);
     m_eeComb_eMax.push_back(eMax/e55);
+    m_eeComb_e25Right.push_back(ecalTool.e2x5Right((*eeComb)[i],eeRecHits.product(),topology));
+    m_eeComb_e25Left.push_back(ecalTool.e2x5Left((*eeComb)[i],eeRecHits.product(),topology));
     m_eeComb_hcalIso.push_back( egIso.getHcalESum((*eeComb)[i].position()) );
 
     if ( !m_isData ) {
@@ -1062,6 +1070,8 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("egComb_frac15",&m_egComb_frac15);
   m_tree->Branch("egComb_e55",&m_egComb_e55);
   m_tree->Branch("egComb_eMax",&m_egComb_eMax);
+  m_tree->Branch("egComb_e25Right",&m_egComb_e25Right);
+  m_tree->Branch("egComb_e25Left",&m_egComb_e25Left);
   m_tree->Branch("egComb_matchDR",&m_egComb_matchDR);
   m_tree->Branch("egComb_matchPID",&m_egComb_matchPID);
   m_tree->Branch("egComb_tagged",&m_egComb_tagged);
@@ -1104,6 +1114,8 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("eeComb_frac15",&m_eeComb_frac15);
   m_tree->Branch("eeComb_eMax",&m_eeComb_eMax);
   m_tree->Branch("eeComb_e55",&m_eeComb_e55);
+  m_tree->Branch("eeComb_e25Left",&m_eeComb_e25Left);
+  m_tree->Branch("eeComb_e25Right",&m_eeComb_e25Right);
   m_tree->Branch("eeComb_matchDR",&m_eeComb_matchDR);
   m_tree->Branch("eeComb_matchPID",&m_eeComb_matchPID);
   m_tree->Branch("eeComb_tagged",&m_eeComb_tagged);
@@ -1274,6 +1286,8 @@ void MonoNtupleDumper::clear()
     m_egComb_frac15.clear();
     m_egComb_e55.clear();
     m_egComb_eMax.clear();
+    m_egComb_e25Right.clear();
+    m_egComb_e25Left.clear();
     m_egComb_matchDR.clear();
     m_egComb_matchPID.clear();
     m_egComb_tagged.clear();
@@ -1316,6 +1330,8 @@ void MonoNtupleDumper::clear()
     m_eeComb_frac15.clear();
     m_eeComb_eMax.clear();
     m_eeComb_e55.clear();
+    m_eeComb_e25Left.clear();
+    m_eeComb_e25Right.clear();
     m_eeComb_matchDR.clear();
     m_eeComb_matchPID.clear();
     m_eeComb_tagged.clear();
