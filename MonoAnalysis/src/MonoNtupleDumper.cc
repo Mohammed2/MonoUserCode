@@ -70,6 +70,7 @@
 #include "Monopoles/MonoAlgorithms/interface/MonoEcalObs0.h"
 #include "Monopoles/MonoAlgorithms/interface/ClustCategorizer.h"
 #include "Monopoles/MonoAlgorithms/interface/MonoTrackMatcher.h"
+#include "Monopoles/MonoAlgorithms/interface/MonoGenTrackExtrapolator.h"
 
 #include "Monopoles/TrackCombiner/interface/MplTracker.h"
 
@@ -354,11 +355,58 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     double m_mpt;
     double m_mpPhi;
 
+    // Generator level branches
+    double m_mono_p;
+    double m_mono_eta;
+    double m_mono_phi;
+    double m_mono_m;
+    double m_mono_px;
+    double m_mono_py;
+    double m_mono_pz;
+    double m_mono_x;
+    double m_mono_y;
+    double m_mono_z;
+
+    double m_monoExp_eta;
+    double m_monoExp_phi;
+    double m_monoExpEE_eta;
+    double m_monoExpEE_phi;
+
+    double m_amon_p;
+    double m_amon_eta;
+    double m_amon_phi;
+    double m_amon_m;
+    double m_amon_px;
+    double m_amon_py;
+    double m_amon_pz;
+    double m_amon_x;
+    double m_amon_y;
+    double m_amon_z;
+
+    double m_amonExp_eta;
+    double m_amonExp_phi;
+    double m_amonExpEE_eta;
+    double m_amonExpEE_phi;
+
 };
 
 //
 // constants, enums and typedefs
 //
+
+namespace chow {
+
+double mag ( double x, double y) {
+  return sqrt( x*x + y*y );
+}
+
+double mag ( double x, double y, double z){
+  return sqrt( x*x + y*y + z*z );
+}
+
+
+}
+
 
 //
 // static data member definitions
@@ -752,7 +800,8 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   std::vector<const reco::CaloCluster *> eeCleanClusters;
 
   tagger.clearTags();
-  if ( !m_isData && nEECleanClusters ) tagger.tag(nEECleanClusters,&(*eeClean)[0]);
+  Mono::GenMonoClusterTagger eetagger(0.3,false);
+  if ( !m_isData && nEECleanClusters ) eetagger.tag(nEECleanClusters,&(*eeClean)[0]);
 
   nClusterCount=0;
   for ( unsigned i=0; i != nEECleanClusters; i++ ) {
@@ -777,9 +826,9 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_eeClean_hcalIso.push_back( egIso.getHcalESum((*eeClean)[i].position()) );
 
     if ( !m_isData ) {
-      m_eeClean_matchDR.push_back(tagger.matchDR()[i]);
-      m_eeClean_tagged.push_back(tagger.tagResult()[i]);
-      m_eeClean_matchPID.push_back(tagger.matchPID()[i]);
+      m_eeClean_matchDR.push_back(eetagger.matchDR()[i]);
+      m_eeClean_tagged.push_back(eetagger.tagResult()[i]);
+      m_eeClean_matchPID.push_back(eetagger.matchPID()[i]);
     }
   }
   m_nCleanEE = nClusterCount;
@@ -792,8 +841,8 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   std::vector<const reco::CaloCluster *> eeUncleanClusters;
 
-  tagger.clearTags();
-  if ( !m_isData && nEEUncleanClusters ) tagger.tag(nEEUncleanClusters,&(*eeUnclean)[0]);
+  eetagger.clearTags();
+  if ( !m_isData && nEEUncleanClusters ) eetagger.tag(nEEUncleanClusters,&(*eeUnclean)[0]);
 
   nClusterCount=0;
   for ( unsigned i=0; i != nEEUncleanClusters; i++ ) {
@@ -818,9 +867,9 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_eeUnclean_hcalIso.push_back( egIso.getHcalESum((*eeUnclean)[i].position()) );
 
     if ( !m_isData ) {
-      m_eeUnclean_matchDR.push_back(tagger.matchDR()[i]);
-      m_eeUnclean_tagged.push_back(tagger.tagResult()[i]);
-      m_eeUnclean_matchPID.push_back(tagger.matchPID()[i]);
+      m_eeUnclean_matchDR.push_back(eetagger.matchDR()[i]);
+      m_eeUnclean_tagged.push_back(eetagger.tagResult()[i]);
+      m_eeUnclean_matchPID.push_back(eetagger.matchPID()[i]);
     }
   }
   m_nUncleanEE = nClusterCount;
@@ -833,8 +882,8 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   std::vector<const reco::CaloCluster *> eeCombClusters;
 
-  tagger.clearTags();
-  if ( !m_isData && nEECombClusters ) tagger.tag(nEECombClusters,&(*eeComb)[0]);
+  eetagger.clearTags();
+  if ( !m_isData && nEECombClusters ) eetagger.tag(nEECombClusters,&(*eeComb)[0]);
 
   nClusterCount=0;
   for ( unsigned i=0; i != nEECombClusters; i++ ) {
@@ -861,9 +910,9 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_eeComb_hcalIso.push_back( egIso.getHcalESum((*eeComb)[i].position()) );
 
     if ( !m_isData ) {
-      m_eeComb_matchDR.push_back(tagger.matchDR()[i]);
-      m_eeComb_tagged.push_back(tagger.tagResult()[i]);
-      m_eeComb_matchPID.push_back(tagger.matchPID()[i]);
+      m_eeComb_matchDR.push_back(eetagger.matchDR()[i]);
+      m_eeComb_tagged.push_back(eetagger.tagResult()[i]);
+      m_eeComb_matchPID.push_back(eetagger.matchPID()[i]);
     }
   }
   m_nCombEE = nClusterCount;
@@ -981,6 +1030,53 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   // fill MET branches
   m_mpt = (*met)[0].sumEt();
   m_mpPhi = (*met)[0].phi();
+
+  // fill generator branches
+  if ( !m_isData ) {
+
+  Mono::MonoTruthSnoop snoopy(iEvent,iSetup);
+  const HepMC::GenParticle *mono = snoopy.mono(Mono::monopole);
+  const HepMC::GenParticle *amon = snoopy.mono(Mono::anti_monopole);
+
+  Mono::MonoGenTrackExtrapolator extrap;
+
+  if ( mono ) {
+    m_mono_p = chow::mag( mono->momentum().px(), mono->momentum().py(), mono->momentum().pz() );
+    m_mono_eta = mono->momentum().eta();
+    m_mono_phi = mono->momentum().phi();
+    m_mono_m = mono->momentum().m();
+    m_mono_px = mono->momentum().px();
+    m_mono_py = mono->momentum().py();
+    m_mono_pz = mono->momentum().pz();
+    m_mono_x = mono->momentum().x();
+    m_mono_y = mono->momentum().y();
+    m_mono_z = mono->momentum().z();
+
+    extrap.setMonopole(*mono);
+    m_monoExp_eta = extrap.etaVr(1.29);
+    m_monoExp_phi = extrap.phi();
+    m_monoExpEE_eta = extrap.etaVz(3.144);
+    m_monoExpEE_phi = extrap.phi();
+  }
+ 
+  if ( amon ) { 
+    m_amon_p = chow::mag( amon->momentum().px(), amon->momentum().py(), amon->momentum().pz() );
+    m_amon_eta = amon->momentum().eta();
+    m_amon_phi = amon->momentum().phi();
+    m_amon_m = amon->momentum().m(); 
+    m_amon_px = amon->momentum().px();
+    m_amon_py = amon->momentum().py();
+    m_amon_pz = amon->momentum().pz();
+    m_amon_x = amon->momentum().x();
+    m_amon_y = amon->momentum().y();
+    m_amon_z = amon->momentum().z();
+
+    extrap.setMonopole(*amon);
+    m_amonExp_eta = extrap.etaVr(1.29);
+    m_amonExp_phi = extrap.phi();
+  }
+
+  }
 
   // fill tree, must go last in this function
   m_tree->Fill();
@@ -1177,6 +1273,37 @@ MonoNtupleDumper::beginJob()
 
   m_tree->Branch("mpt_pt",&m_mpt,"mpt_pt/D");
   m_tree->Branch("mpt_phi",&m_mpPhi,"mpt_phi/D");
+
+
+  if ( !m_isData ) {
+  m_tree->Branch("mono_p", &m_mono_p, "mono_p/D");
+  m_tree->Branch("mono_eta", &m_mono_eta, "mono_eta/D");
+  m_tree->Branch("mono_phi", &m_mono_phi, "mono_phi/D");
+  m_tree->Branch("mono_m", &m_mono_m, "mono_m/D");
+  m_tree->Branch("mono_px",&m_mono_px, "mono_px/D");
+  m_tree->Branch("mono_py",&m_mono_py, "mono_py/D");
+  m_tree->Branch("mono_pz",&m_mono_pz, "mono_pz/D");
+  m_tree->Branch("mono_x",&m_mono_x, "mono_x/D");
+  m_tree->Branch("mono_y",&m_mono_y, "mono_y/D");
+  m_tree->Branch("mono_z",&m_mono_z, "mono_z/D");
+  
+  m_tree->Branch("monoExp_eta",&m_monoExp_eta, "monoExp_eta/D");
+  m_tree->Branch("monoExp_phi",&m_monoExp_phi, "monoExp_phi/D");
+
+  m_tree->Branch("amon_p", &m_amon_p, "amon_p/D");
+  m_tree->Branch("amon_eta", &m_amon_eta, "amon_eta/D");
+  m_tree->Branch("amon_phi", &m_amon_phi, "amon_phi/D");
+  m_tree->Branch("amon_m", &m_amon_m, "amon_m/D");
+  m_tree->Branch("amon_px",&m_amon_px, "amon_px/D");
+  m_tree->Branch("amon_py",&m_amon_py, "amon_py/D");
+  m_tree->Branch("amon_pz",&m_amon_pz, "amon_pz/D");
+  m_tree->Branch("amon_x",&m_amon_x, "amon_x/D");
+  m_tree->Branch("amon_y",&m_amon_y, "amon_y/D");
+  m_tree->Branch("amon_z",&m_amon_z, "amon_z/D");
+
+  m_tree->Branch("amonExp_eta",&m_amonExp_eta, "amonExp_eta/D");
+  m_tree->Branch("amonExp_phi",&m_amonExp_phi, "amonExp_phi/D");
+  }
 
 }
 
@@ -1386,6 +1513,34 @@ void MonoNtupleDumper::clear()
 
     m_mpt = 0.;
     m_mpPhi = 0.;
+
+  m_mono_p = 0.;
+  m_mono_eta = 0.;
+  m_mono_phi = 0.;
+  m_mono_m = 0.;
+  m_mono_px = 0.;
+  m_mono_py = 0.;
+  m_mono_pz = 0.;
+  m_mono_x = 0.;
+  m_mono_y = 0.;
+  m_mono_z = 0.;
+
+  m_monoExp_eta = 0.;
+  m_monoExp_phi = 0.;
+
+  m_amon_p = 0.;
+  m_amon_eta = 0.;
+  m_amon_phi = 0.;
+  m_amon_m = 0.;
+  m_amon_px = 0.;
+  m_amon_py = 0.;
+  m_amon_pz = 0.;
+  m_amon_x = 0.;
+  m_amon_y = 0.;
+  m_amon_z = 0.;
+
+  m_amonExp_eta = 0.;
+  m_amonExp_phi = 0.;
 
 }
 
