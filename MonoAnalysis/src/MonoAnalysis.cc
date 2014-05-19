@@ -425,9 +425,12 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     const unsigned cEta = cluster.ieta();
     const unsigned cPhi = cluster.iphi();
 
+    const bool isTagged = false;
+
     if ( !m_isData ) {
       m_clust_matchDR.push_back(tagger.matchDR()[i]);
       m_clust_tagged.push_back(tagger.tagResult()[i]);
+      if ( tagger.tagResult()[i] ) isTagged = true;
       m_clust_matchPID.push_back(tagger.matchPID()[i]);
       m_clust_matchTime.push_back(tagger.matchTime()[i]);
       m_clust_matchPt.push_back(tagger.matchPt()[i]);
@@ -545,6 +548,7 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     assert( avgEnMap );
     assert( avgTmMap );
 
+    if ( isTagged ) 
     for ( int binx = 1; binx <= hist->GetNbinsX(); binx++ ) {
       for ( int biny = 1; biny <= hist->GetNbinsY(); biny++ ) {
       	avgEnMap->SetBinContent(binx,biny,avgEnMap->GetBinContent(binx,biny)+hist->GetBinContent(binx,biny));
