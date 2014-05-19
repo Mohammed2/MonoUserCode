@@ -313,7 +313,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   Mono::MonoEnum m = Mono::monopole;
   Mono::MonoEnum a = Mono::anti_monopole;
 
-  /*// fill monopole Pixel SimHit vectors
+  // fill monopole Pixel SimHit vectors
   for ( unsigned i=0; i != monoPixST.size(Mono::monopole); i++ ) {
 
     const double x = monoPixST.x(m,i);
@@ -353,6 +353,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   m_mono_Pix_N = monoPixST.size(Mono::monopole);
 
 
+  {
   // aggregate summed information
   const std::map<unsigned, Mono::SumStruct> idSumMap = monoPixST.idSumMap(m);
   std::map<unsigned, Mono::SumStruct>::const_iterator it = idSumMap.begin();
@@ -364,7 +365,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_mono_PixSum_eta.push_back( monoPixST.eta( (*it).first ) );
     m_mono_PixSum_phi.push_back( monoPixST.phi( (*it).first ) );
   }
-
+ 
 
 
 
@@ -424,9 +425,9 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_amon_PixSum_Nids++;
     m_amon_PixSum_eta.push_back( monoPixST.eta( (*it).first ) );
     m_amon_PixSum_phi.push_back( monoPixST.phi( (*it).first ) );
-  }*/
+  }
 
-
+  }
 
 
 
