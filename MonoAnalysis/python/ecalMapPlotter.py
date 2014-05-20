@@ -11,9 +11,10 @@ from ROOT import *
 data_file=""
 sub_directory="demo"
 event_number = int(1)
+output="null"
 
 
-def ecalMapPlotter(fileName,wevent=1,subPath='demo'):
+def ecalMapPlotter(fileName,wevent=1,subPath='demo',output="null"):
   '''ecalMapPlotter'''
 
   if fileName == None:
@@ -96,7 +97,10 @@ def ecalMapPlotter(fileName,wevent=1,subPath='demo'):
     l.append(l[0].DrawLatex( m2deta[i],m2dphi[i],'ap' ) )
 
 
-  raw_input('press Enter to continue...')
+  if output == "null":
+    raw_input('press Enter to continue...')
+  else:
+    can.Print(output)
 
   return [can,eMap,l]
 
@@ -111,7 +115,8 @@ def usage():
     \tdata_file.root\tfile created by MonoRecAnalysis EDAnalyzer\n
     \t-h, --help \tProduces this help message.\n
     \t-n  --event\tEvent number in data file (first,second, etc)\n
-    \t-s, --sub  \tSub-directory in root file. Default \"demo\"\n'''
+    \t-s, --sub  \tSub-directory in root file. Default \"demo\"\n
+    \t-o, --output \tOutput to dump map\n'''
 
   print usage_str
 
@@ -125,7 +130,7 @@ def do_opts():
   import sys,os,getopt
 
   try:
-    opts,args = getopt.getopt(sys.argv[1:],"hn:s:",["help","event=","sub="])
+    opts,args = getopt.getopt(sys.argv[1:],"hn:s:o:",["help","event=","sub=","output="])
   except getopt.GetoptError, err:
     print str(err)
     usage()
@@ -133,6 +138,7 @@ def do_opts():
 
   global event_number
   global sub_directory
+  global output
 
   for o, a in opts:
     if o in ("-h","--help"):
@@ -142,6 +148,8 @@ def do_opts():
       event_number = int(a)
     elif o in ("-s","--sub"):
       sub_directory = a
+    elif o in ("-o","--output"):
+      output = a
     else:
       assert False, "unhandled option"
 
@@ -162,7 +170,7 @@ if __name__ == "__main__":
   do_opts() 
 
   try:
-    ecalMapPlotter(data_file,event_number,sub_directory) 
+    ecalMapPlotter(data_file,event_number,sub_directory,output)
   except Exception, err:
     print 'An error occured during ecalMapPlotter'
     print err
