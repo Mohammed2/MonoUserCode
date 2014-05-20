@@ -4,7 +4,7 @@
 
 from ROOT import *
 
-from pyrootlogon import *
+#from pyrootlogon import *
 
 
 
@@ -53,10 +53,10 @@ def ecalMapPlotter(fileName,wevent=1,subPath='demo'):
       lumi = event.lumi
       eventN = event.event
 
-      m1eta = event.mono_eta
-      m1phi = event.mono_phi
-      m2eta = event.anti_eta
-      m2phi = event.anti_phi
+      m1eta = event.monoExp_eta
+      m1phi = event.monoExp_phi
+      m2eta = event.antiExp_eta
+      m2phi = event.antiExp_phi
 
       m1deta = event.md_eta
       m1dphi = event.md_phi
@@ -79,6 +79,7 @@ def ecalMapPlotter(fileName,wevent=1,subPath='demo'):
   
 
   can = TCanvas('c1','',1200,800)
+  gStyle.SetOptStat(0) 
   eMap.Draw('colz')
   can.SetLogz()
 
