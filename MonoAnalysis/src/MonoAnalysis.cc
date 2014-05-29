@@ -425,7 +425,7 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     const unsigned cEta = cluster.ieta();
     const unsigned cPhi = cluster.iphi();
 
-    const bool isTagged = false;
+    bool isTagged = false;
 
     if ( !m_isData ) {
       m_clust_matchDR.push_back(tagger.matchDR()[i]);
@@ -505,7 +505,7 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     m_clust_hsDiWeird.push_back( kDiWeird );
 
     char text[50];
-    sprintf(text,"Cluster Energy beta=%.4f",0.);
+    sprintf(text,"Cluster Energy beta=%.4f, T=%d",0.,isTagged);
     hist->SetTitle(text); 
     // perform Gaussian fit to cluster
     // normalise to total energy of cluster

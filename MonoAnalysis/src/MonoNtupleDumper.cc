@@ -597,8 +597,10 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
     for ( int binx = 1; binx <= hist.GetNbinsX(); binx++ ) {
       for ( int biny = 1; biny <= hist.GetNbinsY(); biny++ ) {
-      	avgEnMap->SetBinContent(binx,biny,avgEnMap->GetBinContent(binx,biny)+hist.GetBinContent(binx,biny));
-      	avgTmMap->SetBinContent(binx,biny,avgTmMap->GetBinContent(binx,biny)+Thist.GetBinContent(binx,biny));
+	if ( !m_isData && tagger.tagResult()[i] && tagger.matchPID()[i] < 0 ) { 
+	  avgEnMap->SetBinContent(binx,biny,avgEnMap->GetBinContent(binx,biny)+hist.GetBinContent(binx,biny));
+      	  avgTmMap->SetBinContent(binx,biny,avgTmMap->GetBinContent(binx,biny)+Thist.GetBinContent(binx,biny));
+	} 
       }
     }
     
