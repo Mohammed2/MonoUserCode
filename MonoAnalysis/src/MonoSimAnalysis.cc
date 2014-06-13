@@ -102,6 +102,7 @@ class MonoSimAnalysis : public edm::EDAnalyzer {
     edm::InputTag m_TagSimTracks;
     edm::InputTag m_TagSimHits;
     edm::InputTag m_TagCaloHits;
+    edm::InputTag m_TagEEHits;
 
 
     // TTree
@@ -144,6 +145,41 @@ class MonoSimAnalysis : public edm::EDAnalyzer {
     std::vector<double>   m_amon_EcalSum_eta;
     std::vector<double>   m_amon_EcalSum_phi;
     
+    unsigned m_mono_EE_N;
+    std::vector<double> m_mono_EE_x;
+    std::vector<double> m_mono_EE_y;
+    std::vector<double> m_mono_EE_z;
+    std::vector<double> m_mono_EE_rho;
+    std::vector<double> m_mono_EE_eta;
+    std::vector<double> m_mono_EE_phi;
+    std::vector<double> m_mono_EE_time;
+    std::vector<double> m_mono_EE_energy;
+    std::vector<unsigned> m_mono_EE_id;
+
+    unsigned m_amon_EE_N;
+    std::vector<double> m_amon_EE_x;
+    std::vector<double> m_amon_EE_y;
+    std::vector<double> m_amon_EE_z;
+    std::vector<double> m_amon_EE_rho;
+    std::vector<double> m_amon_EE_eta;
+    std::vector<double> m_amon_EE_phi;
+    std::vector<double> m_amon_EE_time;
+    std::vector<double> m_amon_EE_energy;
+
+
+    unsigned m_mono_EESum_Nids;
+    std::vector<unsigned> m_mono_EESum_id;
+    std::vector<unsigned> m_mono_EESum_N;
+    std::vector<double>   m_mono_EESum_energy;
+    std::vector<double>   m_mono_EESum_eta;
+    std::vector<double>   m_mono_EESum_phi;
+
+    unsigned m_amon_EESum_Nids;
+    std::vector<unsigned> m_amon_EESum_id;
+    std::vector<unsigned> m_amon_EESum_N;
+    std::vector<double>   m_amon_EESum_energy;
+    std::vector<double>   m_amon_EESum_eta;
+    std::vector<double>   m_amon_EESum_phi;
 
 
     unsigned m_mono_Pix_N;
@@ -309,6 +345,7 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 
   Mono::MonoSimTracker<PSimHit,TrackerGeometry> monoPixST(iEvent,iSetup,Mono::PixelEBLowTof);
   Mono::MonoSimTracker<PCaloHit,CaloGeometry> monoEcalST(iEvent,iSetup,Mono::EcalEB);
+  Mono::MonoSimTracker<PCaloHit,CaloGeometry> monoEEST(iEvent,iSetup,Mono::EcalEE);
 
   Mono::MonoEnum m = Mono::monopole;
   Mono::MonoEnum a = Mono::anti_monopole;
@@ -516,6 +553,92 @@ MonoSimAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     m_amon_EcalSum_phi.push_back( monoEcalST.phi( (*it).first) );
   }
 
+
+  // fill monopole EE SimHit vectors
+  for ( unsigned i=0; i != monoEEST.size(Mono::monopole); i++ ) {
+
+    const double x = monoEEST.x(m,i);
+    const double y = monoEEST.y(m,i);
+    const double z = monoEEST.z(m,i);
+    
+    const double rho = sqrt(x*x + y*y);
+
+    m_mono_EE_x.push_back( x );
+    m_mono_EE_y.push_back( y );
+    m_mono_EE_z.push_back( z );
+    m_mono_EE_rho.push_back( rho );
+    m_mono_EE_eta.push_back( monoEEST.eta(m,i) );
+    m_mono_EE_phi.push_back( monoEEST.phi(m,i) );
+
+    const double time = monoEEST.hit(m,i) ? monoEEST.hit(m,i)->time() : -999;
+    const double energy = monoEEST.hit(m,i) ? monoEEST.hit(m,i)->energy() : -999;
+
+    m_mono_EE_time.push_back( time );
+    m_mono_EE_energy.push_back( energy );
+
+
+
+
+
+  }
+  m_mono_EE_N = monoEEST.size(Mono::monopole);
+  
+
+ 
+  // get monopole aggregate data 
+  const std::map<unsigned, Mono::SumStruct> monoEEIdSumMap = monoEEST.idSumMap(m);
+  it = monoEEIdSumMap.begin();  
+  for ( ; it != monoEEIdSumMap.end(); it++ ) {
+    m_mono_EESum_id.push_back( (*it).first );
+    m_mono_EESum_N.push_back( (*it).second.N );
+    m_mono_EESum_energy.push_back( (*it).second.sum );
+    m_mono_EESum_Nids++;
+    m_mono_EESum_eta.push_back( monoEEST.eta( (*it).first ) );
+    m_mono_EESum_phi.push_back( monoEEST.phi( (*it).first) );
+  }
+
+
+
+  // fill anti-monopole EE SimHit vectors
+  for ( unsigned i=0; i != monoEEST.size(Mono::anti_monopole); i++ ) {
+
+    const double x = monoEEST.x(a,i);
+    const double y = monoEEST.y(a,i);
+    const double z = monoEEST.z(a,i);
+    
+    const double rho = sqrt(x*x + y*y);
+
+    m_amon_EE_x.push_back( x );
+    m_amon_EE_y.push_back( y );
+    m_amon_EE_z.push_back( z );
+    m_amon_EE_rho.push_back( rho );
+    m_amon_EE_eta.push_back( monoEEST.eta(a,i) );
+    m_amon_EE_phi.push_back( monoEEST.phi(a,i) );
+
+    const double time = monoEEST.hit(a,i) ? monoEEST.hit(a,i)->time() : -999;
+    const double energy = monoEEST.hit(a,i) ? monoEEST.hit(a,i)->energy() : -999;
+
+    m_amon_EE_time.push_back( time );
+    m_amon_EE_energy.push_back( energy );
+
+
+
+  }
+  m_amon_EE_N = monoEEST.size(Mono::anti_monopole);
+
+
+  // get anti-monopole aggregate data
+  const std::map<unsigned,Mono::SumStruct> amonEEIdSumMap = monoEEST.idSumMap(a);
+  it = amonEEIdSumMap.begin();
+  for ( ; it != amonEEIdSumMap.end(); it++ ) {
+    m_amon_EESum_id.push_back( (*it).first );
+    m_amon_EESum_N.push_back( (*it).second.N );
+    m_amon_EESum_energy.push_back( (*it).second.sum );
+    m_amon_EESum_Nids++;
+    m_amon_EESum_eta.push_back( monoEEST.eta( (*it).first ) );
+    m_amon_EESum_phi.push_back( monoEEST.phi( (*it).first) );
+  }
+
     
   // find generator level information
   Mono::MonoTruthSnoop snoopy(iEvent,iSetup);
@@ -664,6 +787,41 @@ MonoSimAnalysis::beginJob()
   m_tree->Branch("amon_EcalSum_energy", &m_amon_EcalSum_energy);
   m_tree->Branch("amon_EcalSum_eta", &m_amon_EcalSum_eta);
   m_tree->Branch("amon_EcalSum_phi", &m_amon_EcalSum_phi);
+
+  m_tree->Branch("mono_EE_N", &m_mono_EE_N, "mono_EE_N/i");
+  m_tree->Branch("mono_EE_x", &m_mono_EE_x);
+  m_tree->Branch("mono_EE_y", &m_mono_EE_y);
+  m_tree->Branch("mono_EE_z", &m_mono_EE_z);
+  m_tree->Branch("mono_EE_rho", &m_mono_EE_rho);
+  m_tree->Branch("mono_EE_eta", &m_mono_EE_eta);
+  m_tree->Branch("mono_EE_phi", &m_mono_EE_phi);
+  m_tree->Branch("mono_EE_time", &m_mono_EE_time);
+  m_tree->Branch("mono_EE_energy", &m_mono_EE_energy);
+  m_tree->Branch("mono_EE_id", &m_mono_EE_id);
+
+  m_tree->Branch("amon_EE_N", &m_amon_EE_N, "amon_EE_N/i");
+  m_tree->Branch("amon_EE_x", &m_amon_EE_x);
+  m_tree->Branch("amon_EE_y", &m_amon_EE_y);
+  m_tree->Branch("amon_EE_z", &m_amon_EE_z);
+  m_tree->Branch("amon_EE_rho", &m_amon_EE_rho);
+  m_tree->Branch("amon_EE_eta", &m_amon_EE_eta);
+  m_tree->Branch("amon_EE_phi", &m_amon_EE_phi);
+  m_tree->Branch("amon_EE_time", &m_amon_EE_time);
+  m_tree->Branch("amon_EE_energy", &m_amon_EE_energy);
+
+  m_tree->Branch("mono_EESum_Nids", &m_mono_EESum_Nids, "mono_EESum_Nids/i");
+  m_tree->Branch("mono_EESum_id", &m_mono_EESum_id);
+  m_tree->Branch("mono_EESum_N", &m_mono_EESum_N);
+  m_tree->Branch("mono_EESum_energy", &m_mono_EESum_energy);
+  m_tree->Branch("mono_EESum_eta", &m_mono_EESum_eta);
+  m_tree->Branch("mono_EESum_phi", &m_mono_EESum_phi);
+
+  m_tree->Branch("amon_EESum_Nids", &m_amon_EESum_Nids, "amon_EESum_Nids/i");
+  m_tree->Branch("amon_EESum_id", &m_amon_EESum_id);
+  m_tree->Branch("amon_EESum_N", &m_amon_EESum_N);
+  m_tree->Branch("amon_EESum_energy", &m_amon_EESum_energy);
+  m_tree->Branch("amon_EESum_eta", &m_amon_EESum_eta);
+  m_tree->Branch("amon_EESum_phi", &m_amon_EESum_phi);
 
 
   m_tree->Branch("mono_Pix_N", &m_mono_Pix_N, "mono_Pix_N/i");
