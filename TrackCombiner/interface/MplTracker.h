@@ -107,12 +107,12 @@ class MplTracker{
     float _XYPar[3], _XYErr[3], _RZPar[3], _RZErr[3];
     float _Chi2XY, _Chi2RZ;
     int _Ndof;
-    float _DeDx, _HighDeDx1, _HighDeDx2;
     float _Iso;
 
     //TFile *_OutputFile;
     TTree *_Tree;
-    vector<float> _vXYPar0, _vXYPar1, _vXYPar2, _vXYErr0, _vXYErr1, _vXYErr2, _vRZPar0, _vRZPar1, _vRZPar2, _vRZErr0, _vRZErr1, _vRZErr2, _vChi2XY, _vChi2RZ, _vNdof, _vDeDx, _vHighDeDx1, _vHighDeDx2, _vIso;
+    vector<float> _vXYPar0, _vXYPar1, _vXYPar2, _vXYErr0, _vXYErr1, _vXYErr2, _vRZPar0, _vRZPar1, _vRZPar2, _vRZErr0, _vRZErr1, _vRZErr2, _vChi2XY, _vChi2RZ, _vNdof, _vIso;
+    vector<int> _vHits, _vSatHits, _vSubHits, _vSatSubHits;
     vector<string> _vGroup;
     vector<int> _clustMatchEB; // match to ecal cluster
     vector<int> _clustMatchEBClean; // match to ecal cluster
@@ -129,7 +129,7 @@ class MplTracker{
 
     bool _TrackHitOutput;
     //TTree *_TrackHitTree;
-    vector<int> _vTHTrack;
+    vector<int> _vTHTrack, _vTHStrips, _vTHSatStrips;
     vector<float> _vTHX, _vTHY, _vTHZ, _vTHErrX, _vTHErrY, _vTHErrZ;
 
     bool _FillSelf;
