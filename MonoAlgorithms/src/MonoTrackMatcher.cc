@@ -8,6 +8,10 @@
 
 namespace Mono {
 
+void Useless_asdf(){
+  if(CLHEP::electron_charge==0) std::cout << "useless" << std::endl;
+}
+
 void MonoTrackMatcher::match(const unsigned nClusters, const MonoEcalCluster *clusters
   ,const EBmap &map
   ,const unsigned nTracks, const MonoTrack *tracks
@@ -29,7 +33,7 @@ void MonoTrackMatcher::match(const unsigned nClusters, const MonoEcalCluster *cl
 
   MonoTrackExtrapolator extrap;
 
-  unsigned M=0;
+//  unsigned M=0;
 
   const double myInf = log(0);
 
@@ -110,7 +114,7 @@ void MonoTrackMatcher::match(const unsigned nClusters, const reco::CaloCluster *
 
   MonoTrackExtrapolator extrap;
 
-  unsigned M=0;
+  //unsigned M=0;
 
   const double myInf = log(0);
 

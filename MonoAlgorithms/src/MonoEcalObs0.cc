@@ -24,6 +24,7 @@
 #include "CLHEP/Matrix/Matrix.h"
 
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -41,6 +42,7 @@ namespace Mono {
 
 
 int nanChecker(const unsigned N, const double *data) {
+  if(CLHEP::electron_charge==0) std::cout << "useless command" << std::endl;
   for ( unsigned i=0; i != N; i++ ) {
     if ( data[i] != data[i] ) return 1;
     else if ( isinf(data[i]) ) return -1;
@@ -401,7 +403,7 @@ void StripSeedFinder::extendSeed(const EBmap &map, const unsigned s)
 
   assert( leftAdd+rightAdd == diff );
 
-  unsigned newEta = UINT_MAX;
+  unsigned newEta = 9999;
   // make sure we don't hang off the end of the barrel
   if ( leftAdd <= curEta && rightAdd+sLength-1U+curEta < nEta ) {
     newEta = curEta-leftAdd; 
@@ -679,7 +681,7 @@ void MonoEcalObs0Calibrator::calculateMijn(const edm::EventSetup &es, const edm:
   m_clusterBuilder.buildClusters(m_seedFinder.nSeeds(),m_seedFinder.seeds(),m_ecalMap);
 
 
-  const unsigned nEta = m_ecalMap.nEta();
+  //const unsigned nEta = m_ecalMap.nEta();
 
   // cycle over clusters and fill appropriate map
   const unsigned nClusters = m_clusterBuilder.nClusters();
@@ -701,8 +703,8 @@ void MonoEcalObs0Calibrator::calculateMijn(const edm::EventSetup &es, const edm:
 
 
 
-    const unsigned ieta = clusters[i].ieta();
-    const unsigned iphi = clusters[i].iphi();
+//    const unsigned ieta = clusters[i].ieta();
+//    const unsigned iphi = clusters[i].iphi();
     const unsigned size = width*length;
     const double eTot = clusters[i].clusterEnergy();
 
@@ -753,7 +755,7 @@ void MonoEcalObs0Calibrator::fillClust(const edm::EventSetup &es, const edm::Eve
   m_clusterBuilder.buildClusters(m_seedFinder.nSeeds(),m_seedFinder.seeds(),m_ecalMap);
 
 
-  const unsigned nEta = m_ecalMap.nEta();
+  //const unsigned nEta = m_ecalMap.nEta();
 
   // cycle over clusters and fill appropriate map
   const unsigned nClusters = m_clusterBuilder.nClusters();
@@ -782,9 +784,9 @@ void MonoEcalObs0Calibrator::fillClust(const edm::EventSetup &es, const edm::Eve
 
 
 
-    const unsigned ieta = clusters[i].ieta();
-    const unsigned iphi = clusters[i].iphi();
-    const unsigned size = width*length;
+    //const unsigned ieta = clusters[i].ieta();
+    //const unsigned iphi = clusters[i].iphi();
+    //const unsigned size = width*length;
     const double eTot = clusters[i].clusterEnergy();
 
 
@@ -813,7 +815,7 @@ void MonoEcalObs0Calibrator::calculateHij()
   MIJType::iterator mijiter = m_Mij.begin();
   MIJType::iterator mijEnd = m_Mij.end();
 
-  unsigned count=0;
+  //unsigned count=0;
   for( ; mijiter != mijEnd; mijiter++ ) {
     std::vector<double> & hVec = m_hij[mijiter->first];
     std::vector<double> & mVec = mijiter->second;
@@ -822,8 +824,8 @@ void MonoEcalObs0Calibrator::calculateHij()
 
     const unsigned side = std::sqrt(size);
 
-    double minEl = DBL_MAX;
-    double maxEl = -(DBL_MAX-1.);
+    //double minEl = DBL_MAX;
+    //double maxEl = -(DBL_MAX-1.);
 
     // decompose mVec with lapack
     int n = side;
@@ -910,8 +912,8 @@ void MonoEcalObs0Calibrator::calculateHij()
 
     const unsigned side = std::sqrt(size);
 
-    double minEl = DBL_MAX;
-    double maxEl = -(DBL_MAX-1.);
+    //double minEl = DBL_MAX;
+    //double maxEl = -(DBL_MAX-1.);
 
     // decompose mVec with lapack
     int n = side;

@@ -36,6 +36,8 @@ using namespace std; using namespace edm;
 
 /// Constructor
 MplTracker::MplTracker(const ParameterSet& parameterSet){
+  if(CLHEP::electron_charge==0) std::cout << "asdf" << std::endl;
+
   _Source = parameterSet.getParameter<std::string>("TrackSource");
   //_Output = parameterSet.getParameter<std::string>("Output");
   _PhiCut = parameterSet.getUntrackedParameter<double>("TrackPhiCut", 0.5);
@@ -140,12 +142,12 @@ void MplTracker::Init(const edm::EventSetup& iSetup) {
   edm::ESHandle<TrackerGeometry> tkGeom;
   iSetup.get<TrackerDigiGeometryRecord>().get( tkGeom );
 
-  vector<GeomDet*> Det = tkGeom->dets();
+  const vector<const GeomDet*> Det = tkGeom->dets();
   for(uint i=0; i<Det.size(); i++){
     DetId Detid = Det[i]->geographicalId();
 
-    StripGeomDetUnit* StripDetUnit = dynamic_cast<StripGeomDetUnit*> (Det[i]);
-    PixelGeomDetUnit* PixelDetUnit = dynamic_cast<PixelGeomDetUnit*> (Det[i]);
+    const StripGeomDetUnit* StripDetUnit = dynamic_cast<const StripGeomDetUnit*> (Det[i]);
+    const PixelGeomDetUnit* PixelDetUnit = dynamic_cast<const PixelGeomDetUnit*> (Det[i]);
 
     if(StripDetUnit){
       _NormMap[Detid.rawId()] = _MeVperADCStrip / StripDetUnit->surface().bounds().thickness();
@@ -222,7 +224,8 @@ void MplTracker::analyze(const Event& event, const EventSetup& setup){
 	  if(Ampls[i] >= 254) SatStrips++;
         }
       }else if(const ProjectedSiStripRecHit2D* projectedHit=dynamic_cast<const ProjectedSiStripRecHit2D*>(Hit)) {
-        const vector<uint8_t>& Ampls = DeDxTools::GetCluster(&(projectedHit->originalHit()))->amplitudes();
+        auto OrigHit=projectedHit->originalHit();
+        const vector<uint8_t>& Ampls = DeDxTools::GetCluster(&OrigHit)->amplitudes();
         Strips += Ampls.size();
         for(uint i=0; i<Ampls.size(); i++){
 	  if(Ampls[i] >= 254) SatStrips++;
@@ -240,7 +243,7 @@ void MplTracker::analyze(const Event& event, const EventSetup& setup){
 	  if(Ampls[i] >= 254) SatStrips++;
         }
 // don't use pixels for now (since the standard algorithms don't use them)
-      }else if(const SiPixelRecHit* pixelHit=dynamic_cast<const SiPixelRecHit*>(Hit)){ 
+      //}else if(const SiPixelRecHit* pixelHit=dynamic_cast<const SiPixelRecHit*>(Hit)){ 
 //      Charge = pixelHit->cluster()->charge();
       }
       //Added dedx cut:
@@ -407,7 +410,8 @@ int MplTracker::AddPoints(const reco::Track &Track){
 	if(Ampls[i] >= 254) HighHits++;
       }
     }else if(const ProjectedSiStripRecHit2D* projectedHit=dynamic_cast<const ProjectedSiStripRecHit2D*>(Hit)) {
-      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(&(projectedHit->originalHit()))->amplitudes();
+      auto OrigHit=projectedHit->originalHit();
+      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(&OrigHit)->amplitudes();
       SumHits += Ampls.size();
       for(uint i=0; i<Ampls.size(); i++){
 	Charge += Ampls[i];
@@ -428,9 +432,9 @@ int MplTracker::AddPoints(const reco::Track &Track){
 	if(Ampls[i] >= 254) HighHits++;
       }
 // don't use pixels for now (since the standard algorithms don't use them)
-    }else if(const SiPixelRecHit* pixelHit=dynamic_cast<const SiPixelRecHit*>(Hit)){ 
+    //}else if(const SiPixelRecHit* pixelHit=dynamic_cast<const SiPixelRecHit*>(Hit)){ 
 //      Charge = pixelHit->cluster()->charge();
-      Charge = -1;
+      //Charge = -1;
     }
 
     //Added dedx cut:

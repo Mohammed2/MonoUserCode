@@ -63,7 +63,7 @@
 
 // Hcal includes
 #include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
-
+//#include "RecoCaloTools/MetaCollections/interface/CaloRecHitMetaCollections.h"
 
 // Monopole analysis includes
 #include "Monopoles/MonoAlgorithms/interface/NPVHelper.h"
@@ -416,7 +416,8 @@ double mag ( double x, double y, double z){
 // constructors and destructor
 //
 MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
-  :m_TagEcalEB_RecHits(iConfig.getParameter<edm::InputTag>("EcalEBRecHits") )
+  :m_output(iConfig.getParameter<std::string>("Output"))
+  ,m_TagEcalEB_RecHits(iConfig.getParameter<edm::InputTag>("EcalEBRecHits") )
   ,m_TagEcalEE_RecHits(iConfig.getParameter<edm::InputTag>("EcalEERecHits") )
   ,m_TagHcalHBHE_RecHits(iConfig.getParameter<edm::InputTag>("HBHERecHits") )
   ,m_Tag_Jets(iConfig.getParameter<edm::InputTag>("JetTag") )
@@ -425,7 +426,6 @@ MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
   ,m_Tag_MET(iConfig.getParameter<edm::InputTag>("METTag") )
   ,m_isData(iConfig.getParameter<bool>("isData") )
   ,m_ecalObs(iConfig)
-  ,m_output(iConfig.getParameter<std::string>("Output"))
 {
   _Tracker = new MplTracker(iConfig);
   _ClustHitOutput = iConfig.getUntrackedParameter<bool>("ClustHitOutput", true);
@@ -463,12 +463,12 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
 
   // execute observable calculations
-  double monoObs = m_ecalObs.calculate(iSetup,iEvent,&m_betas,&m_betaTs);
+//  double monoObs = m_ecalObs.calculate(iSetup,iEvent,&m_betas,&m_betaTs);
   const Mono::EBmap & ebMap = m_ecalObs.ecalMap();
 
   // limits in eta and phi of ebmap
-  const unsigned nEta = ebMap.nEta();
-  const unsigned nPhi = ebMap.nPhi();
+  //const unsigned nEta = ebMap.nEta();
+  //const unsigned nPhi = ebMap.nPhi();
 
   /////////////////////////////////////
   // cluster analysis
@@ -639,8 +639,8 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   // get HE geometry and topology
   // get HB geometry and topology
-  HBHERecHitMetaCollection mhbrh(hbRecHits.product());
-  EgammaHcalIsolation egIso(0.4,0.1,10.,10.,10.,10.,calo,&mhbrh);
+  //SimpleCaloRecHitMetaCollection< HBHERecHitCollection > mhbrh(hbRecHits.product());
+  EgammaHcalIsolation egIso(0.4,0.1,10.,10.,10.,10.,calo,*mhbrh);
 
   // fill RecHit branches
   EBRecHitCollection::const_iterator itHit = ecalRecHits->begin();

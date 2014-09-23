@@ -185,7 +185,7 @@ void DeDxChecker::GetDeDxStrips(const reco::Track &Track){
       _SatStrips += Saturated;
       _HitSatStrips.push_back(Saturated);
 // don't use pixels for now (since the standard algorithms don't use them)
-    }else if(const SiPixelRecHit* pixelHit=dynamic_cast<const SiPixelRecHit*>(Hit)){ 
+    //}else if(const SiPixelRecHit* pixelHit=dynamic_cast<const SiPixelRecHit*>(Hit)){ 
 //      Charge = pixelHit->cluster()->charge();
     }
 

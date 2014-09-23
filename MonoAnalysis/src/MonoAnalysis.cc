@@ -301,6 +301,8 @@ MonoAnalysis::MonoAnalysis(const edm::ParameterSet& iConfig)
   ,m_ecalObs(iConfig)
   //,m_ecalCalib(iConfig)
 {
+   if(CLHEP::electron_charge==0) std::cout << "asdf" << std::endl;
+
    //now do what ever initialization is needed
    m_seed_cell_eDist.resize(10);
    m_seed_cell_tDist.resize(10);
@@ -367,13 +369,13 @@ MonoAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
   //m_ecalCalib.calculateMijn(iSetup,iEvent);
 
   // execute observable calculations
-  double monoObs = m_ecalObs.calculate(iSetup,iEvent,&m_betas,&m_betaTs);
+  //double monoObs = m_ecalObs.calculate(iSetup,iEvent,&m_betas,&m_betaTs);
   const Mono::StripSeedFinder & sFinder = m_ecalObs.finder();
   const Mono::EBmap & ebMap = m_ecalObs.ecalMap();
 
   //const unsigned seedLength = sFinder.seedLength();
   const unsigned nEta = ebMap.nEta();
-  const unsigned nPhi = ebMap.nPhi();
+  //const unsigned nPhi = ebMap.nPhi();
   m_nSeeds = sFinder.nSeeds();
   for ( unsigned i=0; i != m_nSeeds; i++ ) {
     const unsigned seedLength = sFinder.seeds()[i].seedLength();

@@ -119,12 +119,12 @@ void TrackCombinerReco::Init(const edm::EventSetup& iSetup) {
   edm::ESHandle<TrackerGeometry> tkGeom;
   iSetup.get<TrackerDigiGeometryRecord>().get( tkGeom );
 
-  vector<GeomDet*> Det = tkGeom->dets();
+  const std::vector<const GeomDet*> Det = tkGeom->dets();
   for(uint i=0; i<Det.size(); i++){
     DetId Detid = Det[i]->geographicalId();
 
-    StripGeomDetUnit* StripDetUnit = dynamic_cast<StripGeomDetUnit*> (Det[i]);
-    PixelGeomDetUnit* PixelDetUnit = dynamic_cast<PixelGeomDetUnit*> (Det[i]);
+    const StripGeomDetUnit* StripDetUnit = dynamic_cast<const StripGeomDetUnit*> (Det[i]);
+    const PixelGeomDetUnit* PixelDetUnit = dynamic_cast<const PixelGeomDetUnit*> (Det[i]);
 
     if(StripDetUnit){
       _NormMap[Detid.rawId()] = _MeVperADCStrip / StripDetUnit->surface().bounds().thickness();
@@ -332,7 +332,8 @@ int TrackCombinerReco::AddPoints(const reco::Track &Track){
       const vector<uint8_t>& Ampls = DeDxTools::GetCluster(matchedHit->stereoHit())->amplitudes();
       for(uint i=0; i<Ampls.size(); i++) Charge += Ampls[i];
     }else if(const ProjectedSiStripRecHit2D* projectedHit=dynamic_cast<const ProjectedSiStripRecHit2D*>(Hit)) {
-      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(&(projectedHit->originalHit()))->amplitudes();
+      auto OrigHit=projectedHit->originalHit();
+      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(&OrigHit)->amplitudes();
       for(uint i=0; i<Ampls.size(); i++) Charge += Ampls[i];
     }else if(const SiStripRecHit2D* singleHit=dynamic_cast<const SiStripRecHit2D*>(Hit)){
       const vector<uint8_t>& Ampls = DeDxTools::GetCluster(singleHit)->amplitudes();
@@ -341,9 +342,9 @@ int TrackCombinerReco::AddPoints(const reco::Track &Track){
       const vector<uint8_t>& Ampls = DeDxTools::GetCluster(single1DHit)->amplitudes();
       for(uint i=0; i<Ampls.size(); i++) Charge += Ampls[i];
 // don't use pixels for now (since the standard algorithms don't use them)
-    }else if(const SiPixelRecHit* pixelHit=dynamic_cast<const SiPixelRecHit*>(Hit)){ 
+    //}else if(const SiPixelRecHit* pixelHit=dynamic_cast<const SiPixelRecHit*>(Hit)){ 
 //      Charge = pixelHit->cluster()->charge();
-      Charge = -1;
+      //Charge = -1;
     }
 
     //cout << "Adding Charge: " << Charge << " * " << abs(cosine) << " * " << _NormMap[Hit->geographicalId().rawId()] << endl;

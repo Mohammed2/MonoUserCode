@@ -246,7 +246,7 @@ MonoEndCapAnalysis::MonoEndCapAnalysis(const edm::ParameterSet& iConfig)
   :m_TagEcalEE_RecHits(iConfig.getParameter<edm::InputTag>("EcalEERecHits") )
   ,m_isData(iConfig.getParameter<bool>("isData") )
 { 
-  
+  if(CLHEP::electron_charge==0) std::cout << "asdf" << std::endl;  
   
 }
 
@@ -301,7 +301,7 @@ MonoEndCapAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   assert( ecalRecHits->size() > 0 );
 
   // create histograms for End cap maps
-  char name[50];
+//  char name[50];
   /*sprintf(name,"eMapp_%d",m_event);
   TH2D * hEmapp = m_fs->make<TH2D>(name,"",s_nBins,s_xMin,s_xMax,s_nBins,s_xMin,s_xMax);
 
