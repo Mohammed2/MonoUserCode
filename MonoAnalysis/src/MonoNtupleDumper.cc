@@ -640,7 +640,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   // get HE geometry and topology
   // get HB geometry and topology
   //SimpleCaloRecHitMetaCollection< HBHERecHitCollection > mhbrh(hbRecHits.product());
-  EgammaHcalIsolation egIso(0.4,0.1,10.,10.,10.,10.,calo,*mhbrh);
+  EgammaHcalIsolation egIso(0.4,0.1,10.,10.,10.,10.,calo,*hbRecHits);
 
   // fill RecHit branches
   EBRecHitCollection::const_iterator itHit = ecalRecHits->begin();
