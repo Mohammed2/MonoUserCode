@@ -416,7 +416,8 @@ double mag ( double x, double y, double z){
 // constructors and destructor
 //
 MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
-  :m_TagEcalEB_RecHits(iConfig.getParameter<edm::InputTag>("EcalEBRecHits") )
+  :m_output(iConfig.getParameter<std::string>("Output"))
+  ,m_TagEcalEB_RecHits(iConfig.getParameter<edm::InputTag>("EcalEBRecHits") )
   ,m_TagEcalEE_RecHits(iConfig.getParameter<edm::InputTag>("EcalEERecHits") )
   ,m_TagHcalHBHE_RecHits(iConfig.getParameter<edm::InputTag>("HBHERecHits") )
   ,m_Tag_Jets(iConfig.getParameter<edm::InputTag>("JetTag") )
@@ -425,7 +426,6 @@ MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
   ,m_Tag_MET(iConfig.getParameter<edm::InputTag>("METTag") )
   ,m_isData(iConfig.getParameter<bool>("isData") )
   ,m_ecalObs(iConfig)
-  ,m_output(iConfig.getParameter<std::string>("Output"))
 {
   _Tracker = new MplTracker(iConfig);
   _ClustHitOutput = iConfig.getUntrackedParameter<bool>("ClustHitOutput", true);
