@@ -6,3 +6,4 @@
 <use name="Geometry/TrackerGeometryBuilder"/>
 
 <flags EDM_PLUGIN="1"/>
+<flags CXXFLAGS="-Wno-error=unused-variable"/>

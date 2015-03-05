@@ -11,6 +11,7 @@
 <use name="Geometry/Records"/>
 <use name="root"/>
 <use name="CLHEP"/>
+<flags CXXFLAGS="-Wno-error=unused-variable"/>
 <export>
    <lib name="1"/>
 </export>

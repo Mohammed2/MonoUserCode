@@ -15,3 +15,4 @@
 <use name="RecoEgamma/EgammaIsolationAlgos"/>
 <use name="root"/>
 <flags EDM_PLUGIN="1"/>
+<flags CXXFLAGS="-Wno-error=unused-variable"/>
