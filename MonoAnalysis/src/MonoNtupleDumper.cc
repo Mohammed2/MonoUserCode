@@ -41,6 +41,8 @@
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/Common/interface/SortedCollection.h"
 #include "DataFormats/Common/interface/ValueMap.h"
+#include "DataFormats/Common/interface/TriggerResults.h"
+#include "FWCore/Common/interface/TriggerNames.h"
 
 #include "DataFormats/JetReco/interface/PFJetCollection.h"
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
@@ -63,6 +65,9 @@
 
 // Hcal includes
 #include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
+
+// trigger includes
+#include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
 
 
 // Monopole analysis includes
@@ -122,7 +127,11 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::string m_output;
     TFile *m_outputFile;
 
+    // HLTConfigProvider
+    HLTConfigProvider m_hltConfig;
+
     // input tags
+    edm::InputTag m_hltResults;
     edm::InputTag m_TagEcalEB_RecHits;
     edm::InputTag m_TagEcalEE_RecHits;
     edm::InputTag m_TagHcalHBHE_RecHits;
@@ -417,6 +426,7 @@ double mag ( double x, double y, double z){
 //
 MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
   :m_output(iConfig.getParameter<std::string>("Output"))
+  ,m_hltResults(iConfig.getParameter<edm::InputTag>("TriggerResults") )
   ,m_TagEcalEB_RecHits(iConfig.getParameter<edm::InputTag>("EcalEBRecHits") )
   ,m_TagEcalEE_RecHits(iConfig.getParameter<edm::InputTag>("EcalEERecHits") )
   ,m_TagHcalHBHE_RecHits(iConfig.getParameter<edm::InputTag>("HBHERecHits") )
@@ -456,6 +466,26 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   m_run = iEvent.id().run();
   m_lumi = iEvent.id().luminosityBlock();
   m_event = iEvent.id().event();
+
+  ////////////////////////////////////
+  // get a handle on the trigger results
+  Handle<TriggerResults> HLTR;
+  iEvent.getByLabel(m_hltResults,HLTR);
+
+  // get a list of trigger names
+  //std::vector<std::string> hltNames = m_hltConfig.triggerNames();
+  edm::TriggerNames hltNames(iEvent.triggerNames(*HLTR));
+  const std::vector<std::string> & hltNameVec = hltNames.triggerNames();
+  
+  // cycle over trigger names
+  const unsigned nNames = HLTR->size();
+  for ( unsigned i=0; i != nNames; i++ ) {
+    if ( HLTR->accept(i) ) {
+      std::cout << "Passed " << i << " " << hltNameVec[i] << std::endl;
+    }
+    else std::cout << "Failed " << i << " " << hltNameVec[i] << std::endl;
+  }
+
 
   /////////////////////////////////////
   // get NPV for this event
