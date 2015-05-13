@@ -85,6 +85,7 @@
 #include "TH2D.h"
 #include "TH1D.h"
 #include "TF2.h"
+#include "TMath.h"
 
 
 //
@@ -409,8 +410,10 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     std::vector<double> m_candDist;
     std::vector<double> m_candSubHits;
     std::vector<double> m_candSatSubHits;
+    std::vector<double> m_canddEdXSig;
     std::vector<double> m_candTIso;
     std::vector<double> m_candSeedFrac;
+    std::vector<double> m_candf15;
     std::vector<double> m_candE55;
     std::vector<double> m_candHIso;
     std::vector<double> m_candXYPar0;
@@ -513,7 +516,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     m_trigNames.resize(m_NTrigs);
 
     for ( unsigned i=0; i != m_NTrigs; i++ )
-      m_trigNames.push_back(hltNameVec[i]);
+      m_trigNames[i] = hltNameVec[i];
   } 
   // check order of trigger names does not change
   // uncomment to run check.  Otherwise, it will take up time.
@@ -527,6 +530,9 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   const unsigned nNames = HLTR->size();
   for ( unsigned i=0; i != nNames; i++ ) {
     m_trigResults[i] = HLTR->accept(i);
+
+    // a very verbose debug statement!!
+    //cout << m_trigNames[i] << " " << HLTR->accept(i) << endl;
   }
 
 
@@ -1188,8 +1194,10 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("cand_dist",&m_candDist);
   m_tree->Branch("cand_SubHits",&m_candSubHits);
   m_tree->Branch("cand_SatSubHits",&m_candSatSubHits);
+  m_tree->Branch("cand_dEdXSig",&m_canddEdXSig);
   m_tree->Branch("cand_TIso",&m_candTIso);
   m_tree->Branch("cand_f51",&m_candSeedFrac);
+  m_tree->Branch("cand_f15",&m_candf15);
   m_tree->Branch("cand_e55",&m_candE55);
   m_tree->Branch("cand_HIso",&m_candHIso);
   m_tree->Branch("cand_XYPar0",&m_candXYPar0);
@@ -1648,8 +1656,10 @@ void MonoNtupleDumper::clear()
   m_candDist.clear();
   m_candSubHits.clear();
   m_candSatSubHits.clear();
+  m_canddEdXSig.clear();
   m_candTIso.clear();
   m_candSeedFrac.clear();
+  m_candf15.clear();
   m_candE55.clear();
   m_candHIso.clear();
   m_candXYPar0.clear();
@@ -1732,11 +1742,15 @@ void MonoNtupleDumper::rematch()
     // continue to next track if match = -1
     if ( matchEB == -1 && matchEE == -1 ) continue;
 
+    // calculate dE/dX significance
+    const double dEdXSig = sqrt(-TMath::Log(TMath::BinomialI(0.07, subHits[i], satSubHits[i])));
+ 
     /////////////////////////////////////////
     // assign values to branches
     m_nCandidates++;
     m_candSubHits.push_back( subHits[i] );
     m_candSatSubHits.push_back( satSubHits[i] );
+    m_canddEdXSig.push_back( dEdXSig );
     m_candTIso.push_back( tIso[i] );
     m_candXYPar0.push_back( tr.xyp0() );
     m_candXYPar1.push_back( tr.xyp1() );
@@ -1748,6 +1762,7 @@ void MonoNtupleDumper::rematch()
     if ( distEB < distEE ) {
       m_candDist.push_back( distEB );
       m_candSeedFrac.push_back( m_egComb_frac51[matchEB] );
+      m_candf15.push_back( m_egComb_frac15[matchEB] );
       m_candE55.push_back( m_egComb_e55[matchEB] );
       m_candHIso.push_back( m_egComb_hcalIso[matchEB] );
       m_candEta.push_back( m_egComb_eta[matchEB] );
@@ -1755,6 +1770,7 @@ void MonoNtupleDumper::rematch()
     } else {
       m_candDist.push_back( distEE );
       m_candSeedFrac.push_back( m_egComb_frac51[matchEE] );
+      m_candf15.push_back( m_egComb_frac15[matchEE] );
       m_candE55.push_back( m_egComb_e55[matchEE] );
       m_candHIso.push_back( m_egComb_hcalIso[matchEE] );
       m_candEta.push_back( m_egComb_eta[matchEE] );
