@@ -549,10 +549,14 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   const unsigned nEta = ebMap.nEta();
   const unsigned nPhi = ebMap.nPhi();
 
+  // initialize the MC monopole tagger to tag MC monopoels fo RECO objects
+  Mono::GenMonoClusterTagger tagger(0.3);
+  tagger.initialize(iEvent,iSetup);
+
   /////////////////////////////////////
   // cluster analysis
   // retrieve the clusterBuilder from the ecal obs.
-  const Mono::ClusterBuilder clusterBuilder = m_ecalObs.clusterBuilder();
+  /*const Mono::ClusterBuilder clusterBuilder = m_ecalObs.clusterBuilder();
   m_nClusters = clusterBuilder.nClusters();
 
   // tag clusters to gen level monopole extrapolation
@@ -684,7 +688,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     }
     
 
-  }
+  } */
 
 
 
@@ -1769,12 +1773,11 @@ void MonoNtupleDumper::rematch()
       m_candPhi.push_back( m_egComb_phi[matchEB] );
     } else {
       m_candDist.push_back( distEE );
-      m_candSeedFrac.push_back( m_egComb_frac51[matchEE] );
-      m_candf15.push_back( m_egComb_frac15[matchEE] );
-      m_candE55.push_back( m_egComb_e55[matchEE] );
-      m_candHIso.push_back( m_egComb_hcalIso[matchEE] );
-      m_candEta.push_back( m_egComb_eta[matchEE] );
-      m_candPhi.push_back( m_egComb_phi[matchEE] );
+      m_candSeedFrac.push_back( m_eeComb_frac51[matchEE] );
+      m_candE55.push_back( m_eeComb_e55[matchEE] );
+      m_candHIso.push_back( m_eeComb_hcalIso[matchEE] );
+      m_candEta.push_back( m_eeComb_eta[matchEE] );
+      m_candPhi.push_back( m_eeComb_phi[matchEE] );
     }
 
  }
