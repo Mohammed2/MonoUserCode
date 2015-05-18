@@ -1774,6 +1774,7 @@ void MonoNtupleDumper::rematch()
     } else {
       m_candDist.push_back( distEE );
       m_candSeedFrac.push_back( m_eeComb_frac51[matchEE] );
+      m_candf15.push_back( m_eeComb_frac15[matchEB] );
       m_candE55.push_back( m_eeComb_e55[matchEE] );
       m_candHIso.push_back( m_eeComb_hcalIso[matchEE] );
       m_candEta.push_back( m_eeComb_eta[matchEE] );
