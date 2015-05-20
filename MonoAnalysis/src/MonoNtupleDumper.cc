@@ -844,7 +844,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   nClusterCount=0;
   for ( unsigned i=0; i != ncombClusters; i++ ) {
-    if ( (*combClusters)[i].energy() < 50. ) continue;
+    //if ( (*combClusters)[i].energy() < 50. ) continue;
 
     ebClusters.push_back( &(*combClusters)[i] );
 
@@ -972,7 +972,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   nClusterCount=0;
   for ( unsigned i=0; i != nEECombClusters; i++ ) {
-    if ( (*eeComb)[i].energy() < 50. ) continue;
+    //if ( (*eeComb)[i].energy() < 50. ) continue;
 
     eeCombClusters.push_back( &(*eeComb)[i] );
 
@@ -1774,7 +1774,7 @@ void MonoNtupleDumper::rematch()
     } else {
       m_candDist.push_back( distEE );
       m_candSeedFrac.push_back( m_eeComb_frac51[matchEE] );
-      m_candf15.push_back( m_eeComb_frac15[matchEB] );
+      m_candf15.push_back( m_eeComb_frac15[matchEE] );
       m_candE55.push_back( m_eeComb_e55[matchEE] );
       m_candHIso.push_back( m_eeComb_hcalIso[matchEE] );
       m_candEta.push_back( m_eeComb_eta[matchEE] );
