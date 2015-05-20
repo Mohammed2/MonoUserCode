@@ -527,6 +527,37 @@ int main ( int argc, char **argv ) {
   trigNameList.push_back("HLT_L1SingleEG12_v5");
   trigNameList.push_back("HLT_Photon20_CaloIdVL_v3");
   trigNameList.push_back("HLT_L1ETM100_v1");
+  trigNameList.push_back("HLT_SingleJetC5_v2");
+  trigNameList.push_back("HLT_L1SingleJet16_v6");
+  trigNameList.push_back("HLT_Activity_Ecal_SC7_v12");
+  trigNameList.push_back("HLT_L1SingleEG5_v5");
+  trigNameList.push_back("HLT_HcalPhiSym_v10");
+  trigNameList.push_back("HLT_ZeroBiasPixel_DoubleTrack_v1");
+  trigNameList.push_back("HLT_L1SingleJet36_v6");
+  trigNameList.push_back("HLT_Jet20_NoL1FastJet_v2");
+  trigNameList.push_back("HLT_L1ETM30_v1");
+  trigNameList.push_back("HLT_L1ETM40_v1");
+  trigNameList.push_back("HLT_Photon30_CaloIdVL_v13");
+  trigNameList.push_back("HLT_L1ETM70_v1");
+  trigNameList.push_back("HLT_L1DoubleEG3_FwdVeto_v1");
+  trigNameList.push_back("HLT_Ele8_CaloIdL_CaloIsoVL_v16");
+  trigNameList.push_back("HLT_Ele22_CaloIdL_CaloIsoVL_v5");
+  trigNameList.push_back("HLT_Ele17_CaloIdL_CaloIsoVL_v16");
+  trigNameList.push_back("HLT_PFJet40_v5");
+  trigNameList.push_back("HLT_Jet50_NoL1FastJet_v2");
+  trigNameList.push_back("HLT_L1DoubleJet36Central_v6");
+  trigNameList.push_back("HLT_Photon50_CaloIdVL_v9");
+  trigNameList.push_back("HLT_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v14");
+  trigNameList.push_back("HLT_Photon90_CaloIdVL_v9");
+  trigNameList.push_back("HLT_Photon75_CaloIdVL_v12");
+  trigNameList.push_back("HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_v5");
+  trigNameList.push_back("HLT_DiPFJetAve40_v6");
+  trigNameList.push_back("HLT_Ele8_CaloIdT_TrkIdVL_v4");
+  trigNameList.push_back("HLT_Ele8_CaloIdT_TrkIdVL_EG7_v1");
+  trigNameList.push_back("HLT_Photon135_v6");
+  trigNameList.push_back("HLT_PFJet80_v5");
+  trigNameList.push_back("HLT_MET80_v3");
+
 
   string inFileName;
   string outFileName;
