@@ -335,7 +335,11 @@ MonoEndCapAnalysis::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     m_ehit_phi.push_back( cell->getPosition().phi() );
     m_ehit_energy.push_back( (*itHit).energy() );
     m_ehit_time.push_back( (*itHit).time() );
-    m_ehit_otEnergy.push_back( (*itHit).outOfTimeEnergy() );
+    // the outOfTimeEnergy method has been removed from the EcalRecHit class
+    // in CMSSW_7.  I leave this commment here is a note/reminder this is something
+    // I don't immediately know how to fix, but this analyzer is not used much
+    // so it doesn't need to be fixed at the moment.
+    //m_ehit_otEnergy.push_back( (*itHit).outOfTimeEnergy() );
 
     m_ehit_kWeird.push_back( (*itHit).checkFlag(EcalRecHit::kWeird) );
     m_ehit_kDiWeird.push_back( (*itHit).checkFlag(EcalRecHit::kDiWeird) );

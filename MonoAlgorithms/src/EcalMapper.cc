@@ -66,10 +66,10 @@ void EcalMapper::fillMap(const edm::Event &ev, TFileDirectory *dir  )
   TH2D * tMap;
 
   char eMapName[50];
-  sprintf(eMapName,"eMap_%d_%d_%d",ev.id().run(),ev.id().luminosityBlock(),ev.id().event());
+  sprintf(eMapName,"eMap_%d_%d_%llu",ev.id().run(),ev.id().luminosityBlock(),ev.id().event());
 
   char tMapName[50];
-  sprintf(tMapName,"tMap_%d_%d_%d",ev.id().run(),ev.id().luminosityBlock(),ev.id().event());
+  sprintf(tMapName,"tMap_%d_%d_%llu",ev.id().run(),ev.id().luminosityBlock(),ev.id().event());
 
 
   // get Ecal EB geometry

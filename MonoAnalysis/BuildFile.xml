@@ -14,4 +14,5 @@
 <use name="Monopoles/TrackCombiner"/>
 <use name="RecoEgamma/EgammaIsolationAlgos"/>
 <use name="root"/>
+<flags CXXFLAGS="-Wno-error=unused-variable"/>
 <flags EDM_PLUGIN="1"/>

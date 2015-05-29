@@ -132,16 +132,15 @@ void DeDxChecker::GetDeDxStrips(const reco::Track &Track){
   _HitTotStrips.clear();
 
   for (trackingRecHit_iterator iHit=Track.recHitsBegin(); iHit!=Track.recHitsEnd(); iHit++){
-    TrackingRecHitRef Ref = *iHit;
 
-    const TrackingRecHit *Hit = &(*Ref);
+    const TrackingRecHit *Hit = *iHit;
 
     if(!Hit->isValid()) continue;
 
     // add the dedx information: different accessor for every type of hit
 
     if(const SiStripMatchedRecHit2D* matchedHit=dynamic_cast<const SiStripMatchedRecHit2D*>(Hit)){
-      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(matchedHit->stereoHit())->amplitudes();
+      const vector<uint8_t>& Ampls = matchedHit->stereoCluster().amplitudes();
       _TotStrips += Ampls.size();
       _HitTotStrips.push_back(Ampls.size());
 
@@ -152,7 +151,7 @@ void DeDxChecker::GetDeDxStrips(const reco::Track &Track){
       _SatStrips += Saturated;
       _HitSatStrips.push_back(Saturated);
     }else if(const ProjectedSiStripRecHit2D* projectedHit=dynamic_cast<const ProjectedSiStripRecHit2D*>(Hit)) {
-      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(&(projectedHit->originalHit()))->amplitudes();
+      const vector<uint8_t>& Ampls = projectedHit->originalHit().stripCluster().amplitudes();
       _TotStrips += Ampls.size();
       _HitTotStrips.push_back(Ampls.size());
 
@@ -163,7 +162,7 @@ void DeDxChecker::GetDeDxStrips(const reco::Track &Track){
       _SatStrips += Saturated;
       _HitSatStrips.push_back(Saturated);
     }else if(const SiStripRecHit2D* singleHit=dynamic_cast<const SiStripRecHit2D*>(Hit)){
-      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(singleHit)->amplitudes();
+      const vector<uint8_t>& Ampls = singleHit->stripCluster().amplitudes();
       _TotStrips += Ampls.size();
       _HitTotStrips.push_back(Ampls.size());
 
@@ -174,7 +173,7 @@ void DeDxChecker::GetDeDxStrips(const reco::Track &Track){
       _SatStrips += Saturated;
       _HitSatStrips.push_back(Saturated);
     }else if(const SiStripRecHit1D* single1DHit=dynamic_cast<const SiStripRecHit1D*>(Hit)){
-      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(single1DHit)->amplitudes();
+      const vector<uint8_t>& Ampls = single1DHit->stripCluster().amplitudes();
       _TotStrips += Ampls.size();
       _HitTotStrips.push_back(Ampls.size());
 

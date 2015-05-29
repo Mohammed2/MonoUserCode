@@ -186,9 +186,7 @@ void MplTracker::analyze(const Event& event, const EventSetup& setup){
     for (trackingRecHit_iterator iHit=TrackRef->recHitsBegin(); iHit!=TrackRef->recHitsEnd(); iHit++){
       _vTHTrack.push_back(i);
 
-      TrackingRecHitRef Ref = *iHit;
-
-      const TrackingRecHit *Hit = &(*Ref);
+      const TrackingRecHit *Hit = *iHit;
 
       if(!Hit->isValid()) continue;
 
@@ -218,26 +216,26 @@ void MplTracker::analyze(const Event& event, const EventSetup& setup){
 
       int Strips=0, SatStrips=0;
       if(const SiStripMatchedRecHit2D* matchedHit=dynamic_cast<const SiStripMatchedRecHit2D*>(Hit)){
-        const vector<uint8_t>& Ampls = DeDxTools::GetCluster(matchedHit->stereoHit())->amplitudes();
+        const vector<uint8_t>& Ampls = matchedHit->stereoCluster().amplitudes();
         Strips += Ampls.size();
         for(uint i=0; i<Ampls.size(); i++){
 	  if(Ampls[i] >= 254) SatStrips++;
         }
       }else if(const ProjectedSiStripRecHit2D* projectedHit=dynamic_cast<const ProjectedSiStripRecHit2D*>(Hit)) {
         auto OrigHit=projectedHit->originalHit();
-        const vector<uint8_t>& Ampls = DeDxTools::GetCluster(&OrigHit)->amplitudes();
+        const vector<uint8_t>& Ampls = OrigHit.stripCluster().amplitudes();
         Strips += Ampls.size();
         for(uint i=0; i<Ampls.size(); i++){
 	  if(Ampls[i] >= 254) SatStrips++;
         }
       }else if(const SiStripRecHit2D* singleHit=dynamic_cast<const SiStripRecHit2D*>(Hit)){
-        const vector<uint8_t>& Ampls = DeDxTools::GetCluster(singleHit)->amplitudes();
+        const vector<uint8_t>& Ampls = singleHit->stripCluster().amplitudes();
         Strips += Ampls.size();
         for(uint i=0; i<Ampls.size(); i++){
 	  if(Ampls[i] >= 254) SatStrips++;
         }
       }else if(const SiStripRecHit1D* single1DHit=dynamic_cast<const SiStripRecHit1D*>(Hit)){
-        const vector<uint8_t>& Ampls = DeDxTools::GetCluster(single1DHit)->amplitudes();
+        const vector<uint8_t>& Ampls = single1DHit->stripCluster().amplitudes();
         Strips += Ampls.size();
         for(uint i=0; i<Ampls.size(); i++){
 	  if(Ampls[i] >= 254) SatStrips++;
@@ -364,9 +362,8 @@ int MplTracker::AddPoints(const reco::Track &Track){
   if (Traj == NULL) cout << "Incoming!!!" << endl;
 
   for (trackingRecHit_iterator iHit=Track.recHitsBegin(); iHit!=Track.recHitsEnd(); iHit++){
-    TrackingRecHitRef Ref = *iHit;
 
-    const TrackingRecHit *Hit = &(*Ref);
+    const TrackingRecHit *Hit = *iHit;
 
     if(!Hit->isValid()) continue;
 
@@ -403,7 +400,7 @@ int MplTracker::AddPoints(const reco::Track &Track){
     int HighHits = 0, SumHits = 0;
 
     if(const SiStripMatchedRecHit2D* matchedHit=dynamic_cast<const SiStripMatchedRecHit2D*>(Hit)){
-      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(matchedHit->stereoHit())->amplitudes();
+      const vector<uint8_t>& Ampls = matchedHit->stereoCluster().amplitudes();
       SumHits += Ampls.size();
       for(uint i=0; i<Ampls.size(); i++){
 	Charge += Ampls[i];
@@ -411,21 +408,21 @@ int MplTracker::AddPoints(const reco::Track &Track){
       }
     }else if(const ProjectedSiStripRecHit2D* projectedHit=dynamic_cast<const ProjectedSiStripRecHit2D*>(Hit)) {
       auto OrigHit=projectedHit->originalHit();
-      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(&OrigHit)->amplitudes();
+      const vector<uint8_t>& Ampls = OrigHit.stripCluster().amplitudes();
       SumHits += Ampls.size();
       for(uint i=0; i<Ampls.size(); i++){
 	Charge += Ampls[i];
 	if(Ampls[i] >= 254) HighHits++;
       }
     }else if(const SiStripRecHit2D* singleHit=dynamic_cast<const SiStripRecHit2D*>(Hit)){
-      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(singleHit)->amplitudes();
+      const vector<uint8_t>& Ampls = singleHit->stripCluster().amplitudes();
       SumHits += Ampls.size();
       for(uint i=0; i<Ampls.size(); i++){
 	Charge += Ampls[i];
 	if(Ampls[i] >= 254) HighHits++;
       }
     }else if(const SiStripRecHit1D* single1DHit=dynamic_cast<const SiStripRecHit1D*>(Hit)){
-      const vector<uint8_t>& Ampls = DeDxTools::GetCluster(single1DHit)->amplitudes();
+      const vector<uint8_t>& Ampls = single1DHit->stripCluster().amplitudes();
       SumHits += Ampls.size();
       for(uint i=0; i<Ampls.size(); i++){
 	Charge += Ampls[i];
