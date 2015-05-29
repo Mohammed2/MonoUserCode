@@ -13,6 +13,8 @@
 <use name="Monopoles/MonoAlgorithms"/>
 <use name="Monopoles/TrackCombiner"/>
 <use name="RecoEgamma/EgammaIsolationAlgos"/>
+<use name="HLTrigger/HLTcore"/>
 <use name="root"/>
 <flags CXXFLAGS="-Wno-error=unused-variable"/>
 <flags EDM_PLUGIN="1"/>
+<flags CXXFLAGS="-Wno-error=unused-variable"/>

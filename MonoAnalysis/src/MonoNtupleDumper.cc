@@ -41,6 +41,8 @@
 #include "DataFormats/EcalRecHit/interface/EcalRecHitCollections.h"
 #include "DataFormats/Common/interface/SortedCollection.h"
 #include "DataFormats/Common/interface/ValueMap.h"
+#include "DataFormats/Common/interface/TriggerResults.h"
+#include "FWCore/Common/interface/TriggerNames.h"
 
 #include "DataFormats/JetReco/interface/PFJetCollection.h"
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
@@ -63,7 +65,10 @@
 
 // Hcal includes
 #include "DataFormats/HcalRecHit/interface/HcalRecHitCollections.h"
-//#include "RecoCaloTools/MetaCollections/interface/CaloRecHitMetaCollections.h"
+
+// trigger includes
+#include "HLTrigger/HLTcore/interface/HLTConfigProvider.h"
+
 
 // Monopole analysis includes
 #include "Monopoles/MonoAlgorithms/interface/NPVHelper.h"
@@ -80,6 +85,7 @@
 #include "TH2D.h"
 #include "TH1D.h"
 #include "TF2.h"
+#include "TMath.h"
 
 
 //
@@ -116,13 +122,18 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     // clear tree variables
     void clear();
 
+    void rematch(); 
 
       // ----------member data ---------------------------
 
     std::string m_output;
     TFile *m_outputFile;
 
+    // HLTConfigProvider
+    HLTConfigProvider m_hltConfig;
+
     // input tags
+    edm::InputTag m_hltResults;
     edm::InputTag m_TagEcalEB_RecHits;
     edm::InputTag m_TagEcalEE_RecHits;
     edm::InputTag m_TagHcalHBHE_RecHits;
@@ -161,6 +172,11 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     unsigned m_event;
 
     unsigned m_NPV;
+
+    bool m_isFirstEvent;
+    unsigned m_NTrigs;
+    std::vector<bool> m_trigResults;
+    std::vector<std::string> m_trigNames;
 
     // Ecal Observable information
     unsigned m_nClusters;
@@ -388,6 +404,27 @@ class MonoNtupleDumper : public edm::EDAnalyzer {
     double m_amonExpEE_eta;
     double m_amonExpEE_phi;
 
+    ////////////////////////////////////////
+    // Branches to hold the combined monopole objects
+    unsigned m_nCandidates;
+    std::vector<double> m_candDist;
+    std::vector<double> m_candSubHits;
+    std::vector<double> m_candSatSubHits;
+    std::vector<double> m_canddEdXSig;
+    std::vector<double> m_candTIso;
+    std::vector<double> m_candSeedFrac;
+    std::vector<double> m_candf15;
+    std::vector<double> m_candE55;
+    std::vector<double> m_candHIso;
+    std::vector<double> m_candXYPar0;
+    std::vector<double> m_candXYPar1;
+    std::vector<double> m_candXYPar2;
+    std::vector<double> m_candRZPar0;
+    std::vector<double> m_candRZPar1;
+    std::vector<double> m_candRZPar2;
+    std::vector<double> m_candEta;
+    std::vector<double> m_candPhi;
+
 };
 
 //
@@ -417,6 +454,7 @@ double mag ( double x, double y, double z){
 //
 MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
   :m_output(iConfig.getParameter<std::string>("Output"))
+  ,m_hltResults(iConfig.getParameter<edm::InputTag>("TriggerResults") )
   ,m_TagEcalEB_RecHits(iConfig.getParameter<edm::InputTag>("EcalEBRecHits") )
   ,m_TagEcalEE_RecHits(iConfig.getParameter<edm::InputTag>("EcalEERecHits") )
   ,m_TagHcalHBHE_RecHits(iConfig.getParameter<edm::InputTag>("HBHERecHits") )
@@ -427,6 +465,9 @@ MonoNtupleDumper::MonoNtupleDumper(const edm::ParameterSet& iConfig)
   ,m_isData(iConfig.getParameter<bool>("isData") )
   ,m_ecalObs(iConfig)
 {
+
+  m_isFirstEvent = true;
+
   _Tracker = new MplTracker(iConfig);
   _ClustHitOutput = iConfig.getUntrackedParameter<bool>("ClustHitOutput", true);
   _EleJetPhoOutput = iConfig.getUntrackedParameter<bool>("EleJetPhoOutput", true);
@@ -457,6 +498,44 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   m_lumi = iEvent.id().luminosityBlock();
   m_event = iEvent.id().event();
 
+  ////////////////////////////////////
+  // get a handle on the trigger results
+  Handle<TriggerResults> HLTR;
+  iEvent.getByLabel(m_hltResults,HLTR);
+
+  // get a list of trigger names
+  //std::vector<std::string> hltNames = m_hltConfig.triggerNames();
+  edm::TriggerNames hltNames(iEvent.triggerNames(*HLTR));
+  const std::vector<std::string> & hltNameVec = hltNames.triggerNames();
+
+  // fill trigger names and set the size of the trigger result vector
+  if ( m_isFirstEvent ) {
+    m_isFirstEvent=false;
+    m_NTrigs = HLTR->size();
+    m_trigResults.resize(m_NTrigs);
+    m_trigNames.resize(m_NTrigs);
+
+    for ( unsigned i=0; i != m_NTrigs; i++ )
+      m_trigNames[i] = hltNameVec[i];
+  } 
+  // check order of trigger names does not change
+  // uncomment to run check.  Otherwise, it will take up time.
+  /*else {
+    for ( unsigned i=9; i != m_NTrigs; i++ ) {
+      assert(m_trigNames[i].compare(hltNameVec[i])); 
+    }
+  }*/
+  
+  // cycle over trigger names
+  const unsigned nNames = HLTR->size();
+  for ( unsigned i=0; i != nNames; i++ ) {
+    m_trigResults[i] = HLTR->accept(i);
+
+    // a very verbose debug statement!!
+    //cout << m_trigNames[i] << " " << HLTR->accept(i) << endl;
+  }
+
+
   /////////////////////////////////////
   // get NPV for this event
   m_NPV = Mono::getNPV(iEvent,iSetup);
@@ -470,10 +549,14 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   //const unsigned nEta = ebMap.nEta();
   //const unsigned nPhi = ebMap.nPhi();
 
+  // initialize the MC monopole tagger to tag MC monopoels fo RECO objects
+  Mono::GenMonoClusterTagger tagger(0.3);
+  tagger.initialize(iEvent,iSetup);
+
   /////////////////////////////////////
   // cluster analysis
   // retrieve the clusterBuilder from the ecal obs.
-  const Mono::ClusterBuilder clusterBuilder = m_ecalObs.clusterBuilder();
+  /*const Mono::ClusterBuilder clusterBuilder = m_ecalObs.clusterBuilder();
   m_nClusters = clusterBuilder.nClusters();
 
   // tag clusters to gen level monopole extrapolation
@@ -605,7 +688,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     }
     
 
-  }
+  } */
 
 
 
@@ -765,7 +848,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   nClusterCount=0;
   for ( unsigned i=0; i != ncombClusters; i++ ) {
-    if ( (*combClusters)[i].energy() < 50. ) continue;
+    //if ( (*combClusters)[i].energy() < 50. ) continue;
 
     ebClusters.push_back( &(*combClusters)[i] );
 
@@ -893,7 +976,7 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   nClusterCount=0;
   for ( unsigned i=0; i != nEECombClusters; i++ ) {
-    if ( (*eeComb)[i].energy() < 50. ) continue;
+    //if ( (*eeComb)[i].energy() < 50. ) continue;
 
     eeCombClusters.push_back( &(*eeComb)[i] );
 
@@ -1084,6 +1167,11 @@ MonoNtupleDumper::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   }
 
+  //////////////////////////////////////////////////////////
+  // Perform track to cluster matching and form monopole candidates
+  //
+  rematch();
+
   // fill tree, must go last in this function
   m_tree->Fill();
 
@@ -1105,6 +1193,29 @@ MonoNtupleDumper::beginJob()
   m_tree->Branch("event",&m_event,"evnet/i");
 
   m_tree->Branch("NPV",&m_NPV,"NPV/i");
+
+  m_tree->Branch("trigResult",&m_trigResults);
+  m_tree->Branch("trigNames",&m_trigNames);
+
+  // combined candidates
+  m_tree->Branch("cand_N",&m_nCandidates,"cand_N/i");
+  m_tree->Branch("cand_dist",&m_candDist);
+  m_tree->Branch("cand_SubHits",&m_candSubHits);
+  m_tree->Branch("cand_SatSubHits",&m_candSatSubHits);
+  m_tree->Branch("cand_dEdXSig",&m_canddEdXSig);
+  m_tree->Branch("cand_TIso",&m_candTIso);
+  m_tree->Branch("cand_f51",&m_candSeedFrac);
+  m_tree->Branch("cand_f15",&m_candf15);
+  m_tree->Branch("cand_e55",&m_candE55);
+  m_tree->Branch("cand_HIso",&m_candHIso);
+  m_tree->Branch("cand_XYPar0",&m_candXYPar0);
+  m_tree->Branch("cand_XYPar1",&m_candXYPar1);
+  m_tree->Branch("cand_XYPar2",&m_candXYPar2);
+  m_tree->Branch("cand_RZPar0",&m_candRZPar0);
+  m_tree->Branch("cand_RZPar1",&m_candRZPar1);
+  m_tree->Branch("cand_RZPar2",&m_candRZPar2);
+  m_tree->Branch("cand_eta",&m_candEta);
+  m_tree->Branch("cand_phi",&m_candPhi);
 
   m_tree->Branch("clust_N",&m_nClusters,"clust_N/i");
   m_tree->Branch("clust_E",&m_clust_E);
@@ -1548,6 +1659,133 @@ void MonoNtupleDumper::clear()
   m_amonExp_eta = 0.;
   m_amonExp_phi = 0.;
 
+  // combined candidates
+  m_nCandidates = 0U;
+  m_candDist.clear();
+  m_candSubHits.clear();
+  m_candSatSubHits.clear();
+  m_canddEdXSig.clear();
+  m_candTIso.clear();
+  m_candSeedFrac.clear();
+  m_candf15.clear();
+  m_candE55.clear();
+  m_candHIso.clear();
+  m_candXYPar0.clear();
+  m_candXYPar1.clear();
+  m_candXYPar2.clear();
+  m_candRZPar0.clear();
+  m_candRZPar1.clear();
+  m_candRZPar2.clear();
+  m_candEta.clear();
+  m_candPhi.clear();
+
+}
+
+void MonoNtupleDumper::rematch()
+{
+
+
+  const double EcalR = 129.0;
+
+  // Get a handle on the monopole tracks
+  std::vector<Mono::MonoTrack> tracks;
+  _Tracker->getTracks(tracks);
+
+  const std::vector<int> & subHits = _Tracker->getSubHits();
+  const std::vector<int> & satSubHits = _Tracker->getSatSubHits();
+  const std::vector<float> & tIso = _Tracker->getTIso();
+  const std::vector<float> & nDof = _Tracker->getNdof();
+
+  const unsigned nTracks = tracks.size();
+
+  for(unsigned i=0; i < nTracks; i++){
+
+    // if Ndof <= 3 continue
+    if ( nDof[i] <= 3 ) continue;
+
+    const Mono::MonoTrack & tr = tracks[i];
+
+    // Calculate expected Eta, Phi for ECAL cluster
+    float ThisZ = tr.rzp0() + EcalR*tr.rzp1() + EcalR*EcalR*tr.rzp2();
+    float ThisEta = TMath::ASinH(ThisZ / EcalR);
+    float ThisPhi = tr.xyp1() - TMath::ASin((EcalR*EcalR-tr.xyp0()*tr.xyp2())/(2*EcalR*(tr.xyp2()-tr.xyp0())));
+
+    float MinDR = 999;
+    int BestEBCluster=-1, BestEECluster=-1;
+    const unsigned nEBclusters = m_nCombEgamma;
+    for(unsigned j=0; j < nEBclusters; j++){
+      float DEta = ThisEta-m_egComb_eta[j];
+      float DPhi = ThisPhi-m_egComb_phi[j];
+      while(DPhi < -3.14159) DPhi += 2*3.14159;
+      while(DPhi >  3.14159) DPhi -= 2*3.14159;
+
+      float ThisDR = sqrt(pow(DEta,2) + pow(DPhi,2));
+      if(ThisDR < MinDR){
+        MinDR = ThisDR;
+        BestEBCluster = j;
+      }
+    }
+
+    const unsigned nEEclusters = m_nCombEE;
+    for(unsigned j=0; j < nEEclusters; j++){
+      float DEta = ThisEta-m_eeComb_eta[j];
+      float DPhi = ThisPhi-m_eeComb_phi[j];
+      while(DPhi < -3.14159) DPhi += 2*3.14159;
+      while(DPhi >  3.14159) DPhi -= 2*3.14159;
+
+      float ThisDR = sqrt(pow(DEta,2) + pow(DPhi,2));
+      if(ThisDR < MinDR){
+        MinDR = ThisDR;
+        BestEECluster = j;
+        BestEBCluster = -1;
+      }
+    }
+
+    // fill place holders of matches
+    int matchEB = BestEBCluster;
+    int matchEE = BestEECluster;
+    double distEB = BestEBCluster >= 0 ? MinDR : 999;
+    double distEE = BestEECluster >= 0 ? MinDR : 999;
+
+    // continue to next track if match = -1
+    if ( matchEB == -1 && matchEE == -1 ) continue;
+
+    // calculate dE/dX significance
+    const double dEdXSig = sqrt(-TMath::Log(TMath::BinomialI(0.07, subHits[i], satSubHits[i])));
+ 
+    /////////////////////////////////////////
+    // assign values to branches
+    m_nCandidates++;
+    m_candSubHits.push_back( subHits[i] );
+    m_candSatSubHits.push_back( satSubHits[i] );
+    m_canddEdXSig.push_back( dEdXSig );
+    m_candTIso.push_back( tIso[i] );
+    m_candXYPar0.push_back( tr.xyp0() );
+    m_candXYPar1.push_back( tr.xyp1() );
+    m_candXYPar2.push_back( tr.xyp2() );
+    m_candRZPar0.push_back( tr.rzp0() );
+    m_candRZPar1.push_back( tr.rzp1() );
+    m_candRZPar2.push_back( tr.rzp2() );
+
+    if ( distEB < distEE ) {
+      m_candDist.push_back( distEB );
+      m_candSeedFrac.push_back( m_egComb_frac51[matchEB] );
+      m_candf15.push_back( m_egComb_frac15[matchEB] );
+      m_candE55.push_back( m_egComb_e55[matchEB] );
+      m_candHIso.push_back( m_egComb_hcalIso[matchEB] );
+      m_candEta.push_back( m_egComb_eta[matchEB] );
+      m_candPhi.push_back( m_egComb_phi[matchEB] );
+    } else {
+      m_candDist.push_back( distEE );
+      m_candSeedFrac.push_back( m_eeComb_frac51[matchEE] );
+      m_candf15.push_back( m_eeComb_frac15[matchEE] );
+      m_candE55.push_back( m_eeComb_e55[matchEE] );
+      m_candHIso.push_back( m_eeComb_hcalIso[matchEE] );
+      m_candEta.push_back( m_eeComb_eta[matchEE] );
+      m_candPhi.push_back( m_eeComb_phi[matchEE] );
+    }
+
+ }
 }
 
 

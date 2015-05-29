@@ -68,6 +68,12 @@ class MplTracker{
     void getTracks(std::vector<Mono::MonoTrack> &) const;
     void doMatch(unsigned,const Mono::MonoEcalCluster *,const Mono::EBmap &);
     void doMatch(unsigned,const reco::CaloCluster **,const EcalClustID);
+
+    inline const std::vector<int> & getSubHits() const { return _vSubHits; }   
+    inline const std::vector<int> & getSatSubHits() const { return _vSatSubHits; } 
+    inline const std::vector<float> & getTIso() const { return _vIso; }
+    inline const std::vector<float> & getNdof() const { return _vNdof; }
+
   private:
     int AddPoints(const reco::Track &Track);
     void RemovePoints(int n);
